@@ -69,8 +69,6 @@ void do_simple_map(Controller*, Frame*, Frame*, char*, char*);
 void do_sensitivity_map(Controller*, Frame*, Frame*, char*);
 void free_allocation(Controller*, Frame*, Frame*);
 void free_sensitivity_allocation(Controller*, Frame*, Frame*, Frame*); 
-void free_sensitivity_intermediates(Controller*, Frame*, Frame*);
-
 //////////////////////////
 ///      MAIN   	  ///
 /////////////////////////
@@ -85,11 +83,11 @@ int main(int argc,char *argv[])
    	Frame outframe;
    	frame.num_atoms = 0;
 	outframe.num_atoms = 0;
-
+	controls.frame = 0;
+	
 	char* datfile = malloc(64 * sizeof(char));
 	char* topfile = malloc(64 * sizeof(char));
 	char* outfile = malloc(64 * sizeof(char));
-	controls.frame = 0;
 	
 	//read topology/control file
 	parse_command_line_arguments(argc, argv, datfile, topfile, outfile);
@@ -100,8 +98,8 @@ int main(int argc,char *argv[])
 	read_topology_file(&controls, topfile);
 	
 	//determine appropriate controller function
-	if(control.sensivity_flag == 0) do_simple_map(&controls, &frame, &outframe, datfile, outfile);
-	else if(control.sensitivity_flag == 1) do_sensitivity_map(&controls, &frame, &outframe, outfile);	
+	if(controls.sensitivity_flag == 0) do_simple_map(&controls, &frame, &outframe, datfile, outfile);
+	else if(controls.sensitivity_flag == 1) do_sensitivity_map(&controls, &frame, &outframe, outfile);	
 	
 	//free allocated variables
 	free(datfile);
@@ -131,7 +129,7 @@ void do_simple_map(Controller* controls, Frame* inframe, Frame* outframe, char* 
 	
 	//read first frame
 	frame_count++;
-	controls.frame++;
+	controls->frame++;
 	read_frame(controls, inframe, df, &cont_flag);
 	
 	printf("main says num_observables is %d\n", controls->num_observables);
@@ -180,25 +178,27 @@ void do_sensitivity_map(Controller* controls, Frame* inframe1, Frame* outframe, 
 	FILE* of;
 	
 	//open dump file and toggle output file to reset
-	df1 = fopen(control->files.dump1, "rt");
-	df2 = fopen(control->files.dump2, "rt");
-	lf  = fopen(control->files.log,   "rt");
-	gf  = fopen(control->files.guess, "rt");
-	of  = fopen(control->outfile, "w+");
+	df1 = fopen(controls->files.dump1, "rt");
+	df2 = fopen(controls->files.dump2, "rt");
+	lf  = fopen(controls->files.log,   "rt");
+	gf  = fopen(controls->files.guess, "rt");
+	of  = fopen(outfile, "w+");
 	fclose(of);
 
 	//read first frames
 	frame_count++;
-	controls.frame++;
-	read_frames_and_log(controls, inframe1, inframe2, df1, df2, lf, gf, &cont_flag);
+	controls->frame++;
+	
+	printf("reading first frame data for sensitivity map\n");
+	read_frames_and_log(controls, inframe1, &inframe2, df1, df2, lf, gf, &cont_flag);
 	
 	printf("main says num_observables is %d\n", controls->num_observables);
-	printf("1st reading reports log value is %lf\n", controls->log_value);
+	printf("1st reading reports log value is %lf and guess is %lf\n", controls->log_value, controls->guess);
 	
 	while(cont_flag == 1)
 		{
 		//process/map frame
-		process_frames_and_log(controls, inframe1, inframe2, outframe);
+		process_frames_and_log(controls, inframe1, &inframe2, outframe);
 		//printf("finished processing frame\n");
 		
 		//output mapped frame and observables
@@ -208,7 +208,7 @@ void do_sensitivity_map(Controller* controls, Frame* inframe1, Frame* outframe, 
 		//read next frame or set flag if done
 		frame_count++;
 		controls->frame++;
-		read_frames_and_log(controls, inframe1, inframe2, df1, df2, lf, gf, &cont_flag);
+		read_frames_and_log(controls, inframe1, &inframe2, df1, df2, lf, gf, &cont_flag);
 		//printf("cont_flag is %d\n", cont_flag);
 		}
 
@@ -222,7 +222,7 @@ void do_sensitivity_map(Controller* controls, Frame* inframe1, Frame* outframe, 
 	output_topology(controls, outframe);
 	
 	//free allocated varaibles
-	free_sensitivity_allocation(controls, inframe1, inframe2, outframe); 
+	free_sensitivity_allocation(controls, inframe1, &inframe2, outframe); 
 }
 
 //////////////////////////////
@@ -275,28 +275,4 @@ void free_sensitivity_allocation(Controller* control, Frame* inframe1, Frame* in
 	free(outframe->type);
 	
 	free(outframe->type_num);
-}
-
-void free_sensitivity_intermediates(Controller* control, Frame* map1, Frame* map2)
-{
-	int i;
-	
-	//free all data for atoms
-	for(i = 0; i < map1->num_atoms; i++)
-		{
-		free(map1->sites[i].observables);
-		free(map2->sites[i].observables);
-		
-		free(map1->sites[i].coord);
-		free(map2->sites[i].coord);
-		}
-		
-	free(map1->sites);
-	free(map2->sites);
-	
-	free(map1->type);
-	free(map2->type);
-	
-	free(map1->type_num);
-	free(map2->type_num);
 }

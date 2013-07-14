@@ -7,7 +7,7 @@ void process_frames_and_log(Controller*, Frame*, Frame*, Frame*);
 void map_all_atoms(Controller*, Frame*, Frame*); 
 void map_some_atoms(Controller*, Frame*, Frame*);
 void combine_sensitivity_data(Controller*, Frame*, Frame*, Frame*);
-
+void free_sensitivity_intermediates(Controller*, Frame*, Frame*);
 
 //////////////////////////
 ///   process_frame	  ///
@@ -18,16 +18,18 @@ void process_frame(Controller* control, Frame* inframe, Frame* outframe)
 	int i, j;
 	outframe->type_count = 0;
 	
-	printf("processing frame %d\n", control->frame);
+	printf("processing frame at step %d\n", control->frame);
 	
-	if(control->frame == 1)
+	if( (control->frame == 1) || (control->sensitivity_flag != 0) )
 		{
+		//printf("allocate types\n");
 		outframe->type = malloc(control->num_cg_types * sizeof(int));
 		outframe->type_num = malloc(control->num_cg_types * sizeof(int));
 		}
 		
 	for(i = 0; i< control->num_cg_types; i++)
 		{
+		//printf("initalize types\n");
 		outframe->type[i] = -1;
 		outframe->type_num[i] = 0;
 		}
@@ -112,12 +114,16 @@ void process_frames_and_log(Controller* control, Frame* inframe1, Frame* inframe
 	map2.num_atoms = 0;
 	
 	//do normal mapping for the 2 frames
+	//printf("PROCESS_FRAME #1 called\n");
 	process_frame(control, inframe1, &map1);
+	//printf("PROCESS_FRAME #2 called\n");
 	process_frame(control, inframe2, &map2);
 	
+	//printf("COMBINATION called\n");
 	//do combination of files to get final output
 	combine_sensitivity_data(control, &map1, &map2, outframe);
 
+	//printf("FREE INTERMEDIATES\n");
 	//free map data
 	free_sensitivity_intermediates(control, &map1, &map2);
 }
@@ -368,7 +374,7 @@ void map_some_atoms(Controller* control, Frame* inframe, Frame* outframe)
 			mol_val = inframe->atoms[i].mol - 1;
 			if(key[mol_val] == -1)
 				{
-				printf("set information on key[%d] to %d\n", mol_val, mol_count);
+				//printf("set information on key[%d] to %d\n", mol_val, mol_count);
 				key[mol_val] = mol_count;
 				outframe->sites[key[mol_val]].id = key[mol_val] + 1;
 				outframe->sites[key[mol_val]].mol = key[mol_val] + 1;
@@ -386,7 +392,7 @@ void map_some_atoms(Controller* control, Frame* inframe, Frame* outframe)
 					outframe->sites[key[mol_val]].type = outframe->type_count + 1;
 					outframe->type[outframe->type_count] = inframe->atoms[i].type;
 					outframe->type_count++;
-					printf("TYPE_COUNT IS %d ON TYPE %d\n", outframe->type_count, inframe->atoms[i].type);
+					//printf("TYPE_COUNT IS %d ON TYPE %d\n", outframe->type_count, inframe->atoms[i].type);
 					}
 				mol_count++;
 				outframe->type_num[ outframe->sites[key[mol_val]].type  - 1]++;
@@ -405,7 +411,7 @@ void map_some_atoms(Controller* control, Frame* inframe, Frame* outframe)
 				{
 				outframe->sites[key[mol_val]].observables[j] += inframe->atoms[i].observables[j];
 				}
-			printf("finished observable transfer at num_in_site %d\n", outframe->sites[ key[mol_val] ].num_in_site);
+			//printf("finished observable transfer at num_in_site %d\n", outframe->sites[ key[mol_val] ].num_in_site);
 			outframe->sites[ key[mol_val] ].num_in_site++;
 			}
 				
@@ -575,7 +581,7 @@ void combine_sensitivity_data(Controller* control, Frame* inframe1, Frame* infra
 	for(i = 0; i < outframe->num_atoms; i++)
 		{
 		outframe->sites[i].num_in_site = 1;
-		outframe->sites[i].id = inframe1->sites[i].id
+		outframe->sites[i].id = inframe1->sites[i].id;
 		outframe->sites[i].mol = inframe1->sites[i].mol;
 		outframe->sites[i].type = inframe1->sites[i].type;
 		outframe->sites[i].mass = inframe1->sites[i].mass;
@@ -590,4 +596,32 @@ void combine_sensitivity_data(Controller* control, Frame* inframe1, Frame* infra
 			outframe->sites[i].observables[j] = inframe2->sites[i].observables[j] - scalar * inframe1->sites[i].observables[j];
 			}
 		}
+}
+
+//////////////////////////////////////////////
+///   free_sensitivity_intermediates	  ///
+/////////////////////////////////////////////
+
+void free_sensitivity_intermediates(Controller* control, Frame* map1, Frame* map2)
+{
+	int i;
+	
+	//free all data for atoms
+	for(i = 0; i < map1->num_atoms; i++)
+		{
+		free(map1->sites[i].observables);
+		free(map2->sites[i].observables);
+		
+		free(map1->sites[i].coord);
+		free(map2->sites[i].coord);
+		}
+		
+	free(map1->sites);
+	free(map2->sites);
+	
+	free(map1->type);
+	free(map2->type);
+	
+	free(map1->type_num);
+	free(map2->type_num);
 }

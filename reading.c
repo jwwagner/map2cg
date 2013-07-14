@@ -191,11 +191,11 @@ void read_topology_file(Controller *control, char* topfile)
     	fgets(line,100,fr);//log file
     	sscanf(line, "%s", control->files.log);
     	
-    	fgets(line,100,ft);//guess file
+    	fgets(line,100,fr);//guess file
     	sscanf(line, "%s", control->files.guess);
     	
-    	fgets(line,100,ft);//guess file
-    	sscanf(line, "%s", control->log_type);
+    	fgets(line,100,fr);//guess file
+    	sscanf(line, "%d", &control->log_type);
     	}
     	
     printf("finished reading top file\n\n");
@@ -234,7 +234,7 @@ void read_frame(Controller* control, Frame* frame, FILE* df, int* flag)
 			return;
 		}
 	
-	//printf("passed EOF and format test\n");
+	printf("passed EOF and format test\n");
 	//so, we assume content is correct now for next frame and begin reading
 	//read in timestep
 	fgets(line,100,df); //2
@@ -245,7 +245,7 @@ void read_frame(Controller* control, Frame* frame, FILE* df, int* flag)
 	fgets(line,100,df); //4
     sscanf(line, "%d", &i);
     
-    //printf("timestep is %d\n", frame->timestep);
+    printf("timestep is %d\n", frame->timestep);
     //printf("number of atoms is %d\n", i);
     
     //check if num_atoms changed
@@ -280,6 +280,7 @@ void read_frame(Controller* control, Frame* frame, FILE* df, int* flag)
 			{
 			frame->atoms[i].observables = malloc(frame->num_observables * sizeof(double));
 			}
+		printf("observable space allocated\n");
 		}
 	
 	//read in box information
@@ -389,7 +390,7 @@ void read_frame(Controller* control, Frame* frame, FILE* df, int* flag)
 ///   read_frames_and_log	  ///
 /////////////////////////////////
 
-void read_frames_and_log(Controller* control, Frame* inframe1, Frame* inframe2, FILE* df1, FILE* df2, FILE* lf, FILE* gf, int* flag);
+void read_frames_and_log(Controller* control, Frame* inframe1, Frame* inframe2, FILE* df1, FILE* df2, FILE* lf, FILE* gf, int* flag)
 {
 	//flag variables
 	int test1 = 1;
@@ -398,12 +399,17 @@ void read_frames_and_log(Controller* control, Frame* inframe1, Frame* inframe2, 
 	int guess_read = 1;
 	
 	//read frames as usual
+	//printf("read frame 1\n");
 	read_frame(control, inframe1, df1, &test1);
+	//printf("read frame 2\n");
 	read_frame(control, inframe2, df2, &test2);
+	//printf("moving to logfile read\n");
 	read_logfile(control, lf, &test_log);
-	read_guess(control, gf, &test_guess);
+	//printf("moving to guess read\n");
+	read_guess(control, gf, &guess_read);
 	//do test on flags to determine composite (0 in any is a fail)
-	*flag = test1 && test2 && test_log && test_guess;
+	*flag = test1 && test2 && test_log && guess_read;
+	//printf("flag result is %d\n", *flag);
 }
 
   ////////////////////////
@@ -414,12 +420,13 @@ void read_logfile(Controller* control, FILE* lf, int* flag)
 {
 	//declare varaibles
 	int i;
-	double junk, val1, val2;
+	double junk, junk1, junk2;
+	double val1, val2;
 	char line[100];
 	char test[8];
 	
 	//check if we are at EOF
-	if( fgets (line, 100, lf) == NULL )
+	if( fgets(line, 100, lf) == NULL )
 		{
 		*flag = 0;
 		printf("end of file reached in logfile!\n");
@@ -427,7 +434,7 @@ void read_logfile(Controller* control, FILE* lf, int* flag)
 		}
 
 	//check if we need to skip header info
-	if(control->frame == 0)
+	if(control->frame == 1)
 	{
 		i = 1;
 		char test2[5];
@@ -435,24 +442,35 @@ void read_logfile(Controller* control, FILE* lf, int* flag)
 		while(i == 1)
 		{
 			//check line
-			memcpy(line, &test2[0], 4);
+			//printf("intial log file line skipped is %s\n", line);
+			memcpy(test2, &line[0], 4);
 			test2[4] = '\0';
-			if( strcmp(test2, "Step") == 0) i = 0;
-			
+			if( strcmp(test2, "Step") == 0) i = 0;			
 			//read next line
 			fgets(line, 100, lf);
+			
+			//check if we are at EOF
+			if( fgets (line, 100, lf) == NULL )
+			{
+				*flag = 0;
+				printf("end of file reached in logfile!\n");
+				return;
+			}
+
 		}
 	}
 	
 	//see if this is a WARNING line or actual content
-	memcpy(line, &test[0], 7);
+	//printf("\nwarningtest  logfile line reads %s\n", line);
+	memcpy(test, &line[0], 7);
 	test[7] = '\0';
 	if( strcmp(test, "WARNING") == 0) fgets(line, 100, lf);
 	
 	//read actual content for energy value
-	sscanf("%lf %lf %lf %lf %lf", junk, junk, val1, val2, junk);
-	
-	if(control->log_type == 0) control->log_value = val;
+	//printf("acutal logfile line reads %s\n", line);
+	sscanf(line, "%lf %lf %lf %lf %lf", &junk, &junk1, &val1, &val2, &junk2);
+	//printf("values read are %lf %lf %lf %lf %lf\n", junk, junk1, val1, val2, junk2); 
+	if(control->log_type == 0) control->log_value = val1;
 	else if(control->log_type == 1) control->log_value = val2;
 }
 
@@ -473,7 +491,7 @@ void read_guess(Controller* control, FILE* gf, int* flag)
 		}
 
 	//read guess value
-	sscanf("%lf", control->guess);
+	sscanf(line, "%lf", &control->guess);
 }
 
 /////////////////////////////////////
