@@ -147,6 +147,7 @@ void map_all_atoms(Controller* control, Frame* inframe, Frame* outframe)
 	double outx, outy, outz, tot_mass;
 	double dist, box;
 	int key[inframe->num_mol];
+	int min_loc, min_val, tie;
 	
 	//intialize key
 	for(i = 0; i < inframe->num_mol; i++)
@@ -184,6 +185,9 @@ void map_all_atoms(Controller* control, Frame* inframe, Frame* outframe)
 					
 				//see how many matches remain
 				num_matches = 0;
+				min_loc = -1;
+				tie = 0;
+				min_val = 99;
 				for(j = 0; j < control->num_cg_types; j++) //loop through all prototypes
 					{
 					//if( i < 10) printf("outframe->sites[key[%d]].matches[%d] = outframe->sites[%d].matches[%d] = %d\n", mol_val, j, key[mol_val], j, outframe->sites[key[mol_val]].matches[j]); 
@@ -193,6 +197,14 @@ void map_all_atoms(Controller* control, Frame* inframe, Frame* outframe)
 						//verify if newest type is still a match
 						//NOTE: This does not currently take into account # of type in list
 						found = 0;
+						
+						if( control->prototype[j].num == min_val) tie++;
+						if( control->prototype[j].num < min_val)
+							{
+							min_loc = j;
+							min_val = control->prototype[j].num;
+							tie = 0;
+							}
 						
 						//if( i < 10) printf("for loop upto control->prototype[%d].num = %d\n", j, control->prototype[j].num);
 						for(k = 0; k < control->prototype[j].num; k++) //check all prototypes types
@@ -210,7 +222,113 @@ void map_all_atoms(Controller* control, Frame* inframe, Frame* outframe)
 					else num_matches++;
 					}
 						
-				//see if we have a unique match (or no match)
+				//see if we have a unique match (or need evaluation or no match)
+				if(num_matches > 1) //we need to force evaluation in tie-break
+					{
+					//check smallest
+					if( outframe->sites[key[mol_val]].num_in_site > (min_val - 1) ) //we have to fail because the molecule is too large
+						{
+						outframe->sites[key[mol_val]].matches[min_loc] = 0;
+						
+						//see if we need to do this for others
+						if(tie > 0)
+							{
+							for(j = min_loc; j < control->num_cg_types; j++)
+								{
+								if(outframe->sites[key[mol_val]].matches[j] == min_val)
+									{
+										outframe->sites[key[mol_val]].matches[j] = 0;
+										num_matches--;
+									}
+								}
+							}
+						}
+					
+					if(outframe->sites[key[mol_val]].num_in_site == (min_val - 1)) //actual situations may arise where we need to use both this and the previous statements
+						{
+						//evaluate to determine if total match
+						
+						//declare and initialize tesiting prototype
+						int evaluate[ control->prototype[min_loc].num ];
+						for(j = 0; j < control->prototype[min_loc].num; j++) evaluate[j] = -1;
+						l = 1;
+						
+						//loop through site-type and record matches
+						for(j = 0; j < outframe->sites[key[mol_val]].num_in_site; j++) //j is for site types
+							{
+							//try to match with each prototype type
+							for(k = 0; k < control->prototype[min_loc].num; k++)	//k is for prototype type
+								{
+								if( evaluate[k] == -1) //only consider if it is not yet claimed
+									{
+									if( outframe->sites[key[mol_val]].coord[j].type == control->prototype[min_loc].num_list[k])
+										{
+										evaluate[k] = j;
+										break;	//this leaves the for loop in k and moves on to next type
+										}
+									}
+								//fail if we are still here at the last point and have not already last
+								if( k == (control->prototype[min_loc].num - 1) ) l = 0;
+								}
+							}
+						//also check new value
+						if(l == 1)
+							{
+							for(k = 0; k < control->prototype[min_loc].num; k++)
+								{
+								if (evaluate[k] == -1)
+									{
+									if( inframe->atoms[i].type == control->prototype[min_loc].num_list[k] )
+										{
+										evaluate[k] = outframe->sites[key[mol_val]].num_in_site + 1;
+										break;
+										}
+									}
+								}
+							}
+						
+						//if we have failed the evaluate
+						if(l == 0)
+							{
+							outframe->sites[key[mol_val]].matches[min_loc] = 0;
+							num_matches--;
+							//if(i < 50) printf("failure of atom %d for type %d evaluation\n", i, min_loc);
+							//if(i < 50) printf("l = 0 sets outframe->sites[key[%d]].matches[%d] with key = %d \n", mol_val, min_loc, key[mol_val]);
+								
+							}
+							
+						//what if it passes and there a tie?
+						
+						//if there are no unkown sites (temporary pass)
+						else if(l == 1)
+							{
+							//check that all prototypes entries are used
+							for(k = 0; k < control->prototype[min_loc].num; k++)
+								{
+								if(evaluate[k] == -1) l = 0;
+								}
+							
+							//if(i < 50) printf("after second test we have l = %d\n", l);
+							
+							if(l == 0)
+								{
+								outframe->sites[key[mol_val]].matches[min_loc] = 0;
+								num_matches--;
+								}
+							else if(l == 1)
+								{
+								num_matches = 1; 
+								//set all other matches values to zero
+								for(k = 0; k < control->num_cg_types; k++)
+									{
+									outframe->sites[key[mol_val]].matches[min_loc] = 0;
+									}
+								outframe->sites[key[mol_val]].matches[min_loc] = 1;
+								}
+							}
+						}
+					}
+				
 				if(num_matches == 1) //we have a unique winner
 					{
 					//find and set type
@@ -218,6 +336,7 @@ void map_all_atoms(Controller* control, Frame* inframe, Frame* outframe)
 						{
 						if(outframe->sites[key[mol_val]].matches[j] == 1)
 							{
+							//if (i < 50) printf("winner called for outframe->sites[key[%d]].matches[%d] = %d for key = %d\n", mol_val, j, outframe->sites[key[mol_val]].matches[j], key[mol_val]);
 							outframe->sites[key[mol_val]].type = j + 1;
 							//if( (j + 1) > outframe->type_count) outframe->type_count = j + 1;
 							
@@ -237,12 +356,12 @@ void map_all_atoms(Controller* control, Frame* inframe, Frame* outframe)
 								{
 								outframe->type[outframe->type_count] = outframe->sites[key[mol_val]].type;
 								outframe->type_count++;
-								printf("outframe->type count is %d\n", outframe->type_count);
+								printf("outframe->type count is now %d after %d atoms read\n", outframe->type_count, i);
 								}
 							}
 						}
 					}
-				if(num_matches == 0)
+				else if(num_matches == 0)
 					{
 					//there is either a new molecule or an error in the inputs
 					 printf("ERROR: NO MOLECULE TYPE MATCH !!!\n");

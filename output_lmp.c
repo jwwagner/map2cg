@@ -379,14 +379,14 @@ void output_topology(Controller* control, Frame* outframe)
 	
 	fprintf(fp, "cgsites %d\n", outframe->num_atoms);
 	
-	fprintf(fp, "cgtypes %d\n", control->num_cg_types);
-	for(i = 0; i < control->num_cg_types; i++)
+	fprintf(fp, "cgtypes %d\n", outframe->type_count);
+	for(i = 0; i < outframe->type_count; i++)
 		{
 		fprintf(fp, "%d\n", i+1);
 		}
 	
-	fprintf(fp, "moltypes %d\n", control->num_cg_types);
-	for(i = 0; i < control->num_cg_types; i++)
+	fprintf(fp, "moltypes %d\n", outframe->type_count);
+	for(i = 0; i < outframe->type_count; i++)
 		{
 		fprintf(fp, "mol %d %d\n", 1, 3); 
 		}
@@ -403,8 +403,8 @@ void output_topology(Controller* control, Frame* outframe)
 	//	fprintf(fp, "%d %d\n", 0, 0); 
 	//	}
 	
-	fprintf(fp, "system %d\n", control->num_cg_types); 
-	for(i = 0; i < control->num_cg_types; i++)
+	fprintf(fp, "system %d\n", outframe->type_count); 
+	for(i = 0; i < outframe->type_count; i++)
 		{
 		fprintf(fp, "%d %d\n", i+1, outframe->type_num[i]);
 		}

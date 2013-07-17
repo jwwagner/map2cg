@@ -22,6 +22,7 @@ typedef struct
 {
 	int num_cg_sites, num_cg_types, num_fg_sites, num_fg_types;
 	int max_to_map;
+	//int threshold;
 	PROTO* prototype;
 	
 	int geometry_map_flag, observable_map_flag, num_observables;
