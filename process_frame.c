@@ -15,25 +15,28 @@ void free_sensitivity_intermediates(Controller*, Frame*, Frame*);
 
 void process_frame(Controller* control, Frame* inframe, Frame* outframe)
 {
+	//printf("enter process_frame\n");
 	int i, j;
 	outframe->type_count = 0;
 	
-	printf("processing frame at step %d\n", control->frame);
+	//printf("processing frame at step %d\n", control->frame);
 	
-	if( (control->frame == 1) || (control->sensitivity_flag != 0) )
+	if( (control->frame == 1) || (control->sensitivity_flag == 1) )
 		{
 		//printf("allocate types\n");
 		outframe->type = malloc(control->num_cg_types * sizeof(int));
 		outframe->type_num = malloc(control->num_cg_types * sizeof(int));
 		}
-		
+	
+	//intitalize type array
+	//printf("intializing types\n");
 	for(i = 0; i< control->num_cg_types; i++)
 		{
 		//printf("initalize types\n");
 		outframe->type[i] = -1;
 		outframe->type_num[i] = 0;
 		}
-		
+
 	//printf("start process frame\n");
 	
 	//copy basic information from inframe to outframe
@@ -59,14 +62,9 @@ void process_frame(Controller* control, Frame* inframe, Frame* outframe)
 			{
 			outframe->sites[i].observables = malloc(outframe->num_observables * sizeof(double));
 			outframe->sites[i].coord = malloc(control->max_to_map *sizeof(COORD));
+			outframe->sites[i].matches = malloc(control->num_cg_types * sizeof(int));
 			}
 		//printf("observables and coord space allocated\n");
-		}
-	
-	//intialize type array
-	for(i = 0; i < control->num_cg_types; i++)
-		{
-		outframe->type[i] = -1;
 		}
 
 	//reset frame info
@@ -74,6 +72,8 @@ void process_frame(Controller* control, Frame* inframe, Frame* outframe)
 		{
 		outframe->sites[i].q = 0.0;
 		outframe->sites[i].num_in_site = 0;
+		outframe->sites[i].type = -1;
+		
 		
 		for(j = 0; j < outframe->num_observables; j++)
 			{
@@ -85,6 +85,11 @@ void process_frame(Controller* control, Frame* inframe, Frame* outframe)
 			outframe->sites[i].coord[j].x = 0.0;
 			outframe->sites[i].coord[j].y = 0.0;
 			outframe->sites[i].coord[j].z = 0.0;
+			}
+			
+		for(j = 0; j < control->num_cg_types; j++)
+			{
+			outframe->sites[i].matches[j] = 1;
 			}
 		}
 	
@@ -134,10 +139,11 @@ void process_frames_and_log(Controller* control, Frame* inframe1, Frame* inframe
 
 void map_all_atoms(Controller* control, Frame* inframe, Frame* outframe)
 {
-	int i, j;
+	int i, j, k, l;
 	int mol_count = 0;
 	int mol_val;
 	int site_count;
+	int num_matches, found;
 	double outx, outy, outz, tot_mass;
 	double dist, box;
 	int key[inframe->num_mol];
@@ -163,24 +169,86 @@ void map_all_atoms(Controller* control, Frame* inframe, Frame* outframe)
 				key[mol_val] = mol_count;
 				outframe->sites[key[mol_val]].id = key[mol_val] + 1;
 				outframe->sites[key[mol_val]].mol = key[mol_val] + 1;
-				
-				//also set molecule type by looking to match first id
-				outframe->sites[key[mol_val]].type = -1;
-				for(j = 0; j < outframe->type_count; j++)
-					{
-					if( outframe->type[j] == inframe->atoms[i].type) outframe->sites[key[mol_val]].type = j + 1;
-					}
-				//assign type if not set before
-				if(outframe->sites[key[mol_val]].type == -1)
-					{
-					outframe->sites[key[mol_val]].type = outframe->type_count + 1;
-					outframe->type[outframe->type_count] = inframe->atoms[i].type;
-					outframe->type_count++;
-					//printf("TYPE_COUNT IS %d ON TYPE %d\n", outframe->type_count, inframe->atoms[i].type);
-					}
 				mol_count++;
-				outframe->type_num[ outframe->sites[key[mol_val]].type - 1]++;
 				}					
+		
+			//see if type is determined 
+			//printf("checking type as outframe->site[key[%d]].type = outframe->sites[%d].type = %d\n", mol_val, key[mol_val], outframe->sites[key[mol_val]].type);
+			if(outframe->sites[key[mol_val]].type == -1)
+				{
+				//if(i < 10)
+				//	{
+				//	printf("site is of undetermined type\n");
+				//	printf("matches info is as follows\n");
+				//	}
+					
+				//see how many matches remain
+				num_matches = 0;
+				for(j = 0; j < control->num_cg_types; j++) //loop through all prototypes
+					{
+					//if( i < 10) printf("outframe->sites[key[%d]].matches[%d] = outframe->sites[%d].matches[%d] = %d\n", mol_val, j, key[mol_val], j, outframe->sites[key[mol_val]].matches[j]); 
+					
+					if(outframe->sites[key[mol_val]].matches[j] == 1) //only consider if they are still in the running
+						{
+						//verify if newest type is still a match
+						//NOTE: This does not currently take into account # of type in list
+						found = 0;
+						
+						//if( i < 10) printf("for loop upto control->prototype[%d].num = %d\n", j, control->prototype[j].num);
+						for(k = 0; k < control->prototype[j].num; k++) //check all prototypes types
+							{
+							//if( i < 10) printf("testing inframe->atom[%d].type = %d vs control->prototype[%d].num_list[%d] = %d\n", i, inframe->atoms[i].type, j, k, control->prototype[j].num_list[k]);
+							
+							if(inframe->atoms[i].type == control->prototype[j].num_list[k])
+								{
+								found=1;
+								break;
+								}
+							}
+						}			
+					if(found == 0)  outframe->sites[key[mol_val]].matches[j] = 0;
+					else num_matches++;
+					}
+						
+				//see if we have a unique match (or no match)
+				if(num_matches == 1) //we have a unique winner
+					{
+					//find and set type
+					for(j = 0; j < control->num_cg_types; j++)
+						{
+						if(outframe->sites[key[mol_val]].matches[j] == 1)
+							{
+							outframe->sites[key[mol_val]].type = j + 1;
+							//if( (j + 1) > outframe->type_count) outframe->type_count = j + 1;
+							
+							outframe->type_num[j] += 1;
+							
+							//check all known types to see if this is a match
+							l = 0;
+							for(k = 0; k < outframe->type_count; k++) 
+								{
+								if(outframe->type[k] == outframe->sites[key[mol_val]].type)
+									{
+										l = 1;
+									}
+								}
+							
+							if(l == 0)
+								{
+								outframe->type[outframe->type_count] = outframe->sites[key[mol_val]].type;
+								outframe->type_count++;
+								printf("outframe->type count is %d\n", outframe->type_count);
+								}
+							}
+						}
+					}
+				if(num_matches == 0)
+					{
+					//there is either a new molecule or an error in the inputs
+					 printf("ERROR: NO MOLECULE TYPE MATCH !!!\n");
+					}
+						
+				}
 		
 			//printf("transfer information to CG site\n");
 			//transfer information to CG site
@@ -191,6 +259,7 @@ void map_all_atoms(Controller* control, Frame* inframe, Frame* outframe)
 			outframe->sites[key[mol_val]].coord[site_count].y = inframe->atoms[i].y;
 			outframe->sites[key[mol_val]].coord[site_count].z = inframe->atoms[i].z;
 			outframe->sites[key[mol_val]].coord[site_count].mass = inframe->atoms[i].mass;
+			outframe->sites[key[mol_val]].coord[site_count].type = inframe->atoms[i].type;
 			outframe->sites[key[mol_val]].q += inframe->atoms[i].q;
 			//printf("outframe->sites[key[%d]].q = %lf\n", mol_val, outframe->sites[key[mol_val]].q);
 			
@@ -335,10 +404,13 @@ void map_all_atoms(Controller* control, Frame* inframe, Frame* outframe)
 
 void map_some_atoms(Controller* control, Frame* inframe, Frame* outframe)
 {
-	int i, j;
+	int i, j, k;
 	int mol_count = 0;
 	int mol_val;
 	int site_count;
+	int go_flag;
+	int num_matches;
+	int found;
 	double outx, outy, outz, tot_mass;
 	double dist, box;
 	int key[inframe->num_mol];
@@ -348,8 +420,6 @@ void map_some_atoms(Controller* control, Frame* inframe, Frame* outframe)
 		{
 		key[i] = -1;
 		}
-
-	int go_flag;
 		
 	if(control->observable_map_flag == 0) //sum obesrvables
 		{
@@ -368,6 +438,7 @@ void map_some_atoms(Controller* control, Frame* inframe, Frame* outframe)
 					}
 				}
 			
+			//everything from this point forward is the same as in map_all_atoms
 			if(go_flag == 0) continue;
 			
 			//check to see if mol key is set
@@ -379,24 +450,59 @@ void map_some_atoms(Controller* control, Frame* inframe, Frame* outframe)
 				outframe->sites[key[mol_val]].id = key[mol_val] + 1;
 				outframe->sites[key[mol_val]].mol = key[mol_val] + 1;
 				mol_count++;
-
-				//also set molecule type by looking to match first id
-				outframe->sites[key[mol_val]].type = -1;
-				for(j = 0; j < outframe->type_count; j++)
+				}
+				
+			//see if type is determined 
+			if(outframe->sites[key[mol_val]].type == -1)
+				{
+				//see how many matches remain
+				num_matches = 0;
+				for(j = 0; j < control->num_cg_types; j++) //loop through all prototypes
 					{
-					if( outframe->type[j] == inframe->atoms[i].type) outframe->sites[key[mol_val]].type = j + 1;
+					if(outframe->sites[key[mol_val]].matches[j] == 1) //only consider if they are still in the running
+						{
+						//verify if newest type is still a match
+						//NOTE: This does not currently take into account # of type in list
+						found = 0;
+						
+						for(k = 0; k < control->prototype[k].num; k++) //check all prototypes types
+							{
+							if(inframe->atoms[i].type == control->prototype[j].num_list[k])
+								{
+								found=1;
+								break;
+								}
+							}
+						}			
+					if(found == 0)  outframe->sites[key[mol_val]].matches[j] = 0;
+					else num_matches++;
 					}
-				//assign type if not set before
-				if(outframe->sites[key[mol_val]].type == -1)
+						
+				//see if we have a unique match (or no match)
+				if(num_matches == 1) //we have a unique winner
 					{
-					outframe->sites[key[mol_val]].type = outframe->type_count + 1;
-					outframe->type[outframe->type_count] = inframe->atoms[i].type;
-					outframe->type_count++;
-					//printf("TYPE_COUNT IS %d ON TYPE %d\n", outframe->type_count, inframe->atoms[i].type);
+					//find and set type
+					for(j = 0; j < control->num_cg_types; j++)
+						{
+						if(outframe->sites[key[mol_val]].matches[j] == 1)
+							{
+							outframe->sites[key[mol_val]].type = j + 1;
+							if( (j + 1) > outframe->type_count) outframe->type_count = j + 1;
+							
+							outframe->type_num[j]++;
+							
+							//should find a correct way of tracking how many types are discovered
+							outframe->type_count = control->num_cg_types;
+							}
+						}
 					}
-				mol_count++;
-				outframe->type_num[ outframe->sites[key[mol_val]].type  - 1]++;
-				}					
+				if(num_matches == 0)
+					{
+					//there is either a new molecule or an error in the inputs
+					printf("ERROR: NO MOLECULE TYPE MATCH !!!\n");
+					}
+						
+				}
 				
 			//transfer information to CG site
 			site_count = outframe->sites[ key[mol_val] ].num_in_site;
@@ -545,8 +651,14 @@ void map_some_atoms(Controller* control, Frame* inframe, Frame* outframe)
 void combine_sensitivity_data(Controller* control, Frame* inframe1, Frame* inframe2, Frame* outframe)
 {
 	//declare variables
-	int i, j;
+	int i, j, k;
+	//int found = 0;
 	double scalar = control->log_value - control->guess;
+
+	//printf("in combine\n");
+	int paired[inframe2->num_atoms];
+	
+	for(i = 0; i < inframe2->num_atoms; i++) paired[i] = 0;
 
 	//popluate outframe with necessary general information
 	outframe->type_count = 0;
@@ -559,16 +671,19 @@ void combine_sensitivity_data(Controller* control, Frame* inframe1, Frame* infra
 	outframe->timestep = inframe1->timestep;
 	outframe->num_observables = inframe1->num_observables;
 	
+	//printf("allocate type with size %d and %d\n", control->num_cg_types, control->num_cg_types);
 	//allocate type space and initalize
 	outframe->type = malloc(control->num_cg_types * sizeof(int));
 	outframe->type_num = malloc(control->num_cg_types * sizeof(int));
 
+	//printf("copy types\n");
 	for(i = 0; i< control->num_cg_types; i++)
 		{
 		outframe->type[i] = inframe1->type[i];
 		outframe->type_num[i] = inframe1->type_num[i];
 		}
 
+	//printf("allocate combine space\n");
 	//allocate site space
 	outframe->num_atoms = control->num_cg_sites;
 	outframe->sites = malloc(outframe->num_atoms * sizeof(SITE));		
@@ -577,9 +692,11 @@ void combine_sensitivity_data(Controller* control, Frame* inframe1, Frame* infra
 		outframe->sites[i].observables = malloc(outframe->num_observables * sizeof(double));
 		}
 
+	//printf("start conversion to outframe\n");
 	//copy frame info on basic info
 	for(i = 0; i < outframe->num_atoms; i++)
 		{
+		//found = 0;
 		outframe->sites[i].num_in_site = 1;
 		outframe->sites[i].id = inframe1->sites[i].id;
 		outframe->sites[i].mol = inframe1->sites[i].mol;
@@ -589,11 +706,29 @@ void combine_sensitivity_data(Controller* control, Frame* inframe1, Frame* infra
 		outframe->sites[i].x = inframe1->sites[i].x;
 		outframe->sites[i].y = inframe1->sites[i].y;
 		outframe->sites[i].z = inframe1->sites[i].z;
-		
-		//combine "observable information"
-		for(j = 0; j < outframe->num_observables; j++)
+	
+		//look for correct match based on position
+		for(j = 0; j < inframe2->num_atoms; j++)
 			{
-			outframe->sites[i].observables[j] = inframe2->sites[i].observables[j] - scalar * inframe1->sites[i].observables[j];
+			
+			//only consider sites that are not yet paired
+			if(paired[j] == 1) continue;
+			//printf("testing pairs as %d %d at %lf = %lf vs %lf\n", i, j, outframe->sites[i].x, inframe1->sites[j].x, inframe2->sites[j].x);
+			//check each position and skip rest if failed (allow for some rounding error in mapping)
+			if( abs(outframe->sites[i].x - inframe2->sites[j].x) > 0.001 ) continue;
+			if( abs(outframe->sites[i].y - inframe2->sites[j].y) > 0.001 ) continue;
+			if( abs(outframe->sites[i].z - inframe2->sites[j].z) > 0.001 ) continue;
+			
+			//for matched sites
+			paired[j] = 1;
+			//found = 1;
+			//combine "observable information"
+			for(k = 0; k < outframe->num_observables; k++)
+				{
+				outframe->sites[i].observables[k] = inframe2->sites[j].observables[k] - scalar * inframe1->sites[i].observables[k];
+				//printf("pair matched for i = %d j = %d k = %d\n", i, j, k);
+				}
+			break;
 			}
 		}
 }

@@ -8,7 +8,8 @@ void output_frame_minimal(Controller*, Frame*, char*);
 void output_frame_4(Controller*, Frame*, char*);
 void output_frame_second3(Controller*, Frame*, char*);
 void output_topology(Controller*, Frame*);
-
+void output_force_file(Controller*, int, double*, double*, double*, char*);
+	
 //////////////////////////
 ///   output_frame	  ///
 /////////////////////////
@@ -378,14 +379,14 @@ void output_topology(Controller* control, Frame* outframe)
 	
 	fprintf(fp, "cgsites %d\n", outframe->num_atoms);
 	
-	fprintf(fp, "cgtypes %d\n", outframe->type_count);
-	for(i = 0; i < outframe->type_count; i++)
+	fprintf(fp, "cgtypes %d\n", control->num_cg_types);
+	for(i = 0; i < control->num_cg_types; i++)
 		{
 		fprintf(fp, "%d\n", i+1);
 		}
 	
-	fprintf(fp, "moltypes %d\n", outframe->type_count);
-	for(i = 0; i < outframe->type_count; i++)
+	fprintf(fp, "moltypes %d\n", control->num_cg_types);
+	for(i = 0; i < control->num_cg_types; i++)
 		{
 		fprintf(fp, "mol %d %d\n", 1, 3); 
 		}
@@ -402,8 +403,8 @@ void output_topology(Controller* control, Frame* outframe)
 	//	fprintf(fp, "%d %d\n", 0, 0); 
 	//	}
 	
-	fprintf(fp, "system %d\n", outframe->type_count); 
-	for(i = 0; i < outframe->type_count; i++)
+	fprintf(fp, "system %d\n", control->num_cg_types); 
+	for(i = 0; i < control->num_cg_types; i++)
 		{
 		fprintf(fp, "%d %d\n", i+1, outframe->type_num[i]);
 		}
@@ -412,3 +413,39 @@ void output_topology(Controller* control, Frame* outframe)
 	fclose(fp);
 }
 
+/////////////////////////////
+///   output_force_file  ///
+////////////////////////////
+
+void output_force_file(Controller* control, int num, double* distance, double* potential, double* force, char* file)
+{
+	//declare variables
+	int i;
+	FILE* fp = fopen(file, "w+");
+	
+	//write header information
+	printf("write header information\n");
+	fprintf(fp, "# Header information on force file\n");
+	fprintf(fp, "\n");
+	fprintf(fp, "%s\n", control->files.guess);
+	
+	printf("checkpoint #1\n");
+	printf("num is %d\n", num);
+	printf("distance[0] is %lf\n", distance[0]);
+	printf("distance[n-1] is %lf\n", distance[num-1] );
+	
+	fprintf(fp, "N %d R %lf %lf\n", num, distance[0], distance[num-1]);
+	fprintf(fp, "\n");
+	
+	printf("write body information\n");
+	
+	//write body information
+	for(i = 0; i < num; i++)
+		{
+		fprintf(fp, "%d %lf %lf %lf\n", (i+1), distance[i], potential[i], force[i]);
+		}
+	
+	printf("close output file\n");
+	//close file
+	fclose(fp);
+}

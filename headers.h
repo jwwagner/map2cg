@@ -14,8 +14,16 @@ typedef struct
 
 typedef struct
 {
+	int num;
+	int* num_list;
+} PROTO;
+
+typedef struct
+{
 	int num_cg_sites, num_cg_types, num_fg_sites, num_fg_types;
 	int max_to_map;
+	PROTO* prototype;
+	
 	int geometry_map_flag, observable_map_flag, num_observables;
 	int output_flag;
 	int sensitivity_flag;
@@ -25,7 +33,8 @@ typedef struct
 	int frame;
 	int* map;
 
-	int log_type;	
+	int log_type;
+	int guess_type;
 	double log_value;
 	double guess;
 	Filenames files;
@@ -41,6 +50,7 @@ typedef struct
 typedef struct
 {
 	double x, y, z, mass;
+	int type;
 } COORD;
 
 typedef struct
@@ -50,6 +60,7 @@ typedef struct
 	int num_in_site;
 	double* observables;
 	COORD* coord;
+	int* matches;
 } SITE;
 
 typedef struct
