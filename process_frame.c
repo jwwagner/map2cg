@@ -7,6 +7,8 @@ void process_frames_and_log(Controller*, Frame*, Frame*, Frame*);
 void map_all_atoms(Controller*, Frame*, Frame*); 
 void map_some_atoms(Controller*, Frame*, Frame*);
 void combine_sensitivity_data(Controller*, Frame*, Frame*, Frame*);
+void determine_type(Controller*, Frame*, Frame*, int*, int*);
+void geometry_mapping(Controller*, Frame*, Frame*);
 void free_sensitivity_intermediates(Controller*, Frame*, Frame*);
 
 //////////////////////////
@@ -143,11 +145,7 @@ void map_all_atoms(Controller* control, Frame* inframe, Frame* outframe)
 	int mol_count = 0;
 	int mol_val;
 	int site_count;
-	int num_matches, found;
-	double outx, outy, outz, tot_mass;
-	double dist, box;
 	int key[inframe->num_mol];
-	int min_loc, min_val, tie;
 	
 	//intialize key
 	for(i = 0; i < inframe->num_mol; i++)
@@ -172,203 +170,9 @@ void map_all_atoms(Controller* control, Frame* inframe, Frame* outframe)
 				outframe->sites[key[mol_val]].mol = key[mol_val] + 1;
 				mol_count++;
 				}					
-		
-			//see if type is determined 
-			//printf("checking type as outframe->site[key[%d]].type = outframe->sites[%d].type = %d\n", mol_val, key[mol_val], outframe->sites[key[mol_val]].type);
-			if(outframe->sites[key[mol_val]].type == -1)
-				{
-				//if(i < 10)
-				//	{
-				//	printf("site is of undetermined type\n");
-				//	printf("matches info is as follows\n");
-				//	}
-					
-				//see how many matches remain
-				num_matches = 0;
-				min_loc = -1;
-				tie = 0;
-				min_val = 99;
-				for(j = 0; j < control->num_cg_types; j++) //loop through all prototypes
-					{
-					//if( i < 10) printf("outframe->sites[key[%d]].matches[%d] = outframe->sites[%d].matches[%d] = %d\n", mol_val, j, key[mol_val], j, outframe->sites[key[mol_val]].matches[j]); 
-					
-					if(outframe->sites[key[mol_val]].matches[j] == 1) //only consider if they are still in the running
-						{
-						//verify if newest type is still a match
-						//NOTE: This does not currently take into account # of type in list
-						found = 0;
-						
-						if( control->prototype[j].num == min_val) tie++;
-						if( control->prototype[j].num < min_val)
-							{
-							min_loc = j;
-							min_val = control->prototype[j].num;
-							tie = 0;
-							}
-						
-						//if( i < 10) printf("for loop upto control->prototype[%d].num = %d\n", j, control->prototype[j].num);
-						for(k = 0; k < control->prototype[j].num; k++) //check all prototypes types
-							{
-							//if( i < 10) printf("testing inframe->atom[%d].type = %d vs control->prototype[%d].num_list[%d] = %d\n", i, inframe->atoms[i].type, j, k, control->prototype[j].num_list[k]);
-							
-							if(inframe->atoms[i].type == control->prototype[j].num_list[k])
-								{
-								found=1;
-								break;
-								}
-							}
-						}			
-					if(found == 0)  outframe->sites[key[mol_val]].matches[j] = 0;
-					else num_matches++;
-					}
-						
-				//see if we have a unique match (or need evaluation or no match)
-				if(num_matches > 1) //we need to force evaluation in tie-break
-					{
-					//check smallest
-					if( outframe->sites[key[mol_val]].num_in_site > (min_val - 1) ) //we have to fail because the molecule is too large
-						{
-						outframe->sites[key[mol_val]].matches[min_loc] = 0;
-						
-						//see if we need to do this for others
-						if(tie > 0)
-							{
-							for(j = min_loc; j < control->num_cg_types; j++)
-								{
-								if(outframe->sites[key[mol_val]].matches[j] == min_val)
-									{
-										outframe->sites[key[mol_val]].matches[j] = 0;
-										num_matches--;
-									}
-								}
-							}
-						}
-					
-					if(outframe->sites[key[mol_val]].num_in_site == (min_val - 1)) //actual situations may arise where we need to use both this and the previous statements
-						{
-						//evaluate to determine if total match
-						
-						//declare and initialize tesiting prototype
-						int evaluate[ control->prototype[min_loc].num ];
-						for(j = 0; j < control->prototype[min_loc].num; j++) evaluate[j] = -1;
-						l = 1;
-						
-						//loop through site-type and record matches
-						for(j = 0; j < outframe->sites[key[mol_val]].num_in_site; j++) //j is for site types
-							{
-							//try to match with each prototype type
-							for(k = 0; k < control->prototype[min_loc].num; k++)	//k is for prototype type
-								{
-								if( evaluate[k] == -1) //only consider if it is not yet claimed
-									{
-									if( outframe->sites[key[mol_val]].coord[j].type == control->prototype[min_loc].num_list[k])
-										{
-										evaluate[k] = j;
-										break;	//this leaves the for loop in k and moves on to next type
-										}
-									}
-								//fail if we are still here at the last point and have not already last
-								if( k == (control->prototype[min_loc].num - 1) ) l = 0;
-								}
-							}
-						//also check new value
-						if(l == 1)
-							{
-							for(k = 0; k < control->prototype[min_loc].num; k++)
-								{
-								if (evaluate[k] == -1)
-									{
-									if( inframe->atoms[i].type == control->prototype[min_loc].num_list[k] )
-										{
-										evaluate[k] = outframe->sites[key[mol_val]].num_in_site + 1;
-										break;
-										}
-									}
-								}
-							}
-						
-						//if we have failed the evaluate
-						if(l == 0)
-							{
-							outframe->sites[key[mol_val]].matches[min_loc] = 0;
-							num_matches--;
-							//if(i < 50) printf("failure of atom %d for type %d evaluation\n", i, min_loc);
-							//if(i < 50) printf("l = 0 sets outframe->sites[key[%d]].matches[%d] with key = %d \n", mol_val, min_loc, key[mol_val]);
-								
-							}
-							
-						//what if it passes and there a tie?
-						
-						//if there are no unkown sites (temporary pass)
-						else if(l == 1)
-							{
-							//check that all prototypes entries are used
-							for(k = 0; k < control->prototype[min_loc].num; k++)
-								{
-								if(evaluate[k] == -1) l = 0;
-								}
-							
-							//if(i < 50) printf("after second test we have l = %d\n", l);
-							
-							if(l == 0)
-								{
-								outframe->sites[key[mol_val]].matches[min_loc] = 0;
-								num_matches--;
-								}
-							else if(l == 1)
-								{
-								num_matches = 1; 
-								//set all other matches values to zero
-								for(k = 0; k < control->num_cg_types; k++)
-									{
-									outframe->sites[key[mol_val]].matches[min_loc] = 0;
-									}
-								outframe->sites[key[mol_val]].matches[min_loc] = 1;
-								}
-							}
-						}
-					}
-				
-				if(num_matches == 1) //we have a unique winner
-					{
-					//find and set type
-					for(j = 0; j < control->num_cg_types; j++)
-						{
-						if(outframe->sites[key[mol_val]].matches[j] == 1)
-							{
-							//if (i < 50) printf("winner called for outframe->sites[key[%d]].matches[%d] = %d for key = %d\n", mol_val, j, outframe->sites[key[mol_val]].matches[j], key[mol_val]);
-							outframe->sites[key[mol_val]].type = j + 1;
-							//if( (j + 1) > outframe->type_count) outframe->type_count = j + 1;
-							
-							outframe->type_num[j] += 1;
-							
-							//check all known types to see if this is a match
-							l = 0;
-							for(k = 0; k < outframe->type_count; k++) 
-								{
-								if(outframe->type[k] == outframe->sites[key[mol_val]].type)
-									{
-										l = 1;
-									}
-								}
-							
-							if(l == 0)
-								{
-								outframe->type[outframe->type_count] = outframe->sites[key[mol_val]].type;
-								outframe->type_count++;
-								printf("outframe->type count is now %d after %d atoms read\n", outframe->type_count, i);
-								}
-							}
-						}
-					}
-				else if(num_matches == 0)
-					{
-					//there is either a new molecule or an error in the inputs
-					 printf("ERROR: NO MOLECULE TYPE MATCH !!!\n");
-					}
-						
-				}
-		
+			
+			determine_type(control, inframe, outframe, &i, &key[mol_val]);
+			
 			//printf("transfer information to CG site\n");
 			//transfer information to CG site
 			site_count = outframe->sites[ key[mol_val] ].num_in_site;
@@ -391,128 +195,8 @@ void map_all_atoms(Controller* control, Frame* inframe, Frame* outframe)
 			outframe->sites[ key[mol_val] ].num_in_site++;
 			}
 				
-		//apply averaging and processing
-		if(control->geometry_map_flag == 0) //map to CoM
-			{
-			for(i = 0; i < outframe->num_atoms; i++)
-				{
-				outx = 0.0;
-				outy = 0.0;
-				outz = 0.0;
-				tot_mass = 0.0;
-				
-				for(j = 0; j < outframe->sites[i].num_in_site; j++)
-					{
-					//check to see if coordinates are wrapped (and reset out* values)
-					dist = outframe->sites[i].coord[j].x - outframe->sites[i].coord[0].x;
-					box = outframe->xmax - outframe->xmin;
-					if( abs(dist) >= (box/2.0) )
-						{
-						if(dist > 0) outframe->sites[i].coord[j].x -= box;
-						else		 outframe->sites[i].coord[j].x += box;
-						}					
-					
-					dist = outframe->sites[i].coord[j].y - outframe->sites[i].coord[0].y;
-					box = outframe->ymax - outframe->ymin;
-					if( abs(dist) >= (box/2.0) )
-						{
-						if(dist > 0) outframe->sites[i].coord[j].y -= box;
-						else		 outframe->sites[i].coord[j].y += box;
-						}	
-					
-					dist = outframe->sites[i].coord[j].z - outframe->sites[i].coord[0].z;
-					box = outframe->zmax - outframe->zmin;
-					if( abs(dist) >= (box/2.0) )
-						{
-						if(dist > 0) outframe->sites[i].coord[j].z -= box;
-						else		 outframe->sites[i].coord[j].z += box;
-						}
-						
-					//add value to weighted sum
-					outx += outframe->sites[i].coord[j].x * outframe->sites[i].coord[j].mass;
-					outy += outframe->sites[i].coord[j].y * outframe->sites[i].coord[j].mass;
-					outz += outframe->sites[i].coord[j].z * outframe->sites[i].coord[j].mass;
-					tot_mass += outframe->sites[i].coord[j].mass;
-					}
-				
-				//calculate average positions
-				outframe->sites[i].x = outx / tot_mass;
-				outframe->sites[i].y = outy / tot_mass;
-				outframe->sites[i].z = outz / tot_mass;
-				//printf("done finding center of mass for molecules %d \n", i);
-				//check if final coordinate is in box (wrap)
-				if( outframe->sites[i].x > outframe->xmax ) outframe->sites[i].x -= outframe->xmax - outframe->xmin;
-				if( outframe->sites[i].x < outframe->xmin ) outframe->sites[i].x += outframe->xmax - outframe->xmin;
-				if( outframe->sites[i].y > outframe->ymax ) outframe->sites[i].y -= outframe->ymax - outframe->ymin;
-				if( outframe->sites[i].y < outframe->ymin ) outframe->sites[i].y += outframe->ymax - outframe->ymin;
-				if( outframe->sites[i].z > outframe->zmax ) outframe->sites[i].z -= outframe->zmax - outframe->zmin;
-				if( outframe->sites[i].z < outframe->zmin ) outframe->sites[i].z += outframe->zmax - outframe->zmin;
-					
-				//set total mass
-				outframe->sites[i].mass = tot_mass;
-				}
-							
-			}
-		else if(control->geometry_map_flag == 1) //map to CoG
-			{
-			for(i = 0; i < outframe->num_atoms; i++)
-				{
-				outx = 0.0;
-				outy = 0.0;
-				outz = 0.0;
-				tot_mass = 0.0;
-				
-				for(j = 0; j < outframe->sites[i].num_in_site; j++)
-					{
-					//check to see if coordinates are wrapped (and reset out* values)
-					dist = outframe->sites[i].coord[j].x - outframe->sites[i].coord[0].x;
-					box = outframe->xmax - outframe->xmin;
-					if( abs(dist) >= (box/2.0) )
-						{
-						if(dist > 0) outframe->sites[i].coord[j].x -= box;
-						else		 outframe->sites[i].coord[j].x += box;
-						}
-					
-					dist = outframe->sites[i].coord[j].y - outframe->sites[i].coord[0].y;
-					box = outframe->ymax - outframe->ymin;
-					if( abs(dist) >= (box/2.0) )
-						{
-						if(dist > 0) outframe->sites[i].coord[j].y -= box;
-						else		 outframe->sites[i].coord[j].y += box;
-						}
-					
-					dist = outframe->sites[i].coord[j].z - outframe->sites[i].coord[0].z;
-					box = outframe->zmax - outframe->zmin;
-					if( abs(dist) >= (box/2.0) )
-						{
-						if(dist > 0) outframe->sites[i].coord[j].z -= box;
-						else		 outframe->sites[i].coord[j].z += box;
-						}
-					
-					//add value to weighted sum
-					outx += outframe->sites[i].coord[j].x;
-					outy += outframe->sites[i].coord[j].y;
-					outz += outframe->sites[i].coord[j].z;
-					tot_mass += outframe->sites[i].coord[j].mass;
-					}
-				
-				//calculate average positions
-				outframe->sites[i].x = outx / outframe->sites[i].num_in_site;
-				outframe->sites[i].y = outy / outframe->sites[i].num_in_site;
-				outframe->sites[i].z = outz / outframe->sites[i].num_in_site;
-				
-				//check if final coordinate is in box (wrap)
-				if( outframe->sites[i].x > outframe->xmax ) outframe->sites[i].x -= outframe->xmax - outframe->xmin;
-				if( outframe->sites[i].x < outframe->xmin ) outframe->sites[i].x += outframe->xmax - outframe->xmin;
-				if( outframe->sites[i].y > outframe->ymax ) outframe->sites[i].y -= outframe->ymax - outframe->ymin;
-				if( outframe->sites[i].y < outframe->ymin ) outframe->sites[i].y += outframe->ymax - outframe->ymin;
-				if( outframe->sites[i].z > outframe->zmax ) outframe->sites[i].z -= outframe->zmax - outframe->zmin;
-				if( outframe->sites[i].z < outframe->zmin ) outframe->sites[i].z += outframe->zmax - outframe->zmin;
-					
-				//set total mass
-				outframe->sites[i].mass = tot_mass;
-				}
-			}			
+		geometry_mapping(control, inframe, outframe);
+		
 		}
 		outframe->num_mol = mol_count;		
 }
@@ -528,10 +212,6 @@ void map_some_atoms(Controller* control, Frame* inframe, Frame* outframe)
 	int mol_val;
 	int site_count;
 	int go_flag;
-	int num_matches;
-	int found;
-	double outx, outy, outz, tot_mass;
-	double dist, box;
 	int key[inframe->num_mol];
 	
 	//intialize key
@@ -571,57 +251,7 @@ void map_some_atoms(Controller* control, Frame* inframe, Frame* outframe)
 				mol_count++;
 				}
 				
-			//see if type is determined 
-			if(outframe->sites[key[mol_val]].type == -1)
-				{
-				//see how many matches remain
-				num_matches = 0;
-				for(j = 0; j < control->num_cg_types; j++) //loop through all prototypes
-					{
-					if(outframe->sites[key[mol_val]].matches[j] == 1) //only consider if they are still in the running
-						{
-						//verify if newest type is still a match
-						//NOTE: This does not currently take into account # of type in list
-						found = 0;
-						
-						for(k = 0; k < control->prototype[k].num; k++) //check all prototypes types
-							{
-							if(inframe->atoms[i].type == control->prototype[j].num_list[k])
-								{
-								found=1;
-								break;
-								}
-							}
-						}			
-					if(found == 0)  outframe->sites[key[mol_val]].matches[j] = 0;
-					else num_matches++;
-					}
-						
-				//see if we have a unique match (or no match)
-				if(num_matches == 1) //we have a unique winner
-					{
-					//find and set type
-					for(j = 0; j < control->num_cg_types; j++)
-						{
-						if(outframe->sites[key[mol_val]].matches[j] == 1)
-							{
-							outframe->sites[key[mol_val]].type = j + 1;
-							if( (j + 1) > outframe->type_count) outframe->type_count = j + 1;
-							
-							outframe->type_num[j]++;
-							
-							//should find a correct way of tracking how many types are discovered
-							outframe->type_count = control->num_cg_types;
-							}
-						}
-					}
-				if(num_matches == 0)
-					{
-					//there is either a new molecule or an error in the inputs
-					printf("ERROR: NO MOLECULE TYPE MATCH !!!\n");
-					}
-						
-				}
+			determine_type(control, inframe, outframe, &i, &key[mol_val]);
 				
 			//transfer information to CG site
 			site_count = outframe->sites[ key[mol_val] ].num_in_site;
@@ -640,138 +270,22 @@ void map_some_atoms(Controller* control, Frame* inframe, Frame* outframe)
 			outframe->sites[ key[mol_val] ].num_in_site++;
 			}
 				
-		//apply averaging and processing
-		if(control->geometry_map_flag == 0) //map to CoM
-			{
-			for(i = 0; i < outframe->num_atoms; i++)
-				{
-				outx = 0.0;
-				outy = 0.0;
-				outz = 0.0;
-				tot_mass = 0.0;
-				
-				for(j = 0; j < outframe->sites[i].num_in_site; j++)
-					{
-					//check to see if coordinates are wrapped (and reset out* values)
-					dist = outframe->sites[i].coord[j].x - outframe->sites[i].coord[0].x;
-					box = outframe->xmax - outframe->xmin;
-					if( abs(dist) >= (box/2.0) )
-						{
-						if(dist > 0) outframe->sites[i].coord[j].x -= box;
-						else		 outframe->sites[i].coord[j].x += box;
-						}
-						
-					dist = outframe->sites[i].coord[j].y - outframe->sites[i].coord[0].y;
-					box = outframe->ymax - outframe->ymin;
-					if( abs(dist) >= (box/2.0) )
-						{
-						if(dist > 0) outframe->sites[i].coord[j].y -= box;
-						else		 outframe->sites[i].coord[j].y += box;
-						}
-									
-					dist = outframe->sites[i].coord[j].z - outframe->sites[i].coord[0].z;
-					box = outframe->zmax - outframe->zmin;
-					if( abs(dist) >= (box/2.0) )
-						{
-						if(dist > 0) outframe->sites[i].coord[j].z -= box;
-						else		 outframe->sites[i].coord[j].z += box;
-						}
-						
-					//add value to weighted sum
-					outx += outframe->sites[i].coord[j].x * outframe->sites[i].coord[j].mass;
-					outy += outframe->sites[i].coord[j].y * outframe->sites[i].coord[j].mass;
-					outz += outframe->sites[i].coord[j].z * outframe->sites[i].coord[j].mass;
-					tot_mass += outframe->sites[i].coord[j].mass;
-					}
-				
-				//calculate average positions
-				outframe->sites[i].x = outx / tot_mass;
-				outframe->sites[i].y = outy / tot_mass;
-				outframe->sites[i].z = outz / tot_mass;
-				
-				//check if final coordinate is in box (wrap)
-				if( outframe->sites[i].x > outframe->xmax ) outframe->sites[i].x -= outframe->xmax - outframe->xmin;
-				if( outframe->sites[i].x < outframe->xmin ) outframe->sites[i].x += outframe->xmax - outframe->xmin;
-				if( outframe->sites[i].y > outframe->ymax ) outframe->sites[i].y -= outframe->ymax - outframe->ymin;
-				if( outframe->sites[i].y < outframe->ymin ) outframe->sites[i].y += outframe->ymax - outframe->ymin;
-				if( outframe->sites[i].z > outframe->zmax ) outframe->sites[i].z -= outframe->zmax - outframe->zmin;
-				if( outframe->sites[i].z < outframe->zmin ) outframe->sites[i].z += outframe->zmax - outframe->zmin;
-					
-				//set total mass
-				outframe->sites[i].mass = tot_mass;
-				}
-			
-			}
-		else if(control->geometry_map_flag == 1) //map to CoG
-			{
-			for(i = 0; i < outframe->num_atoms; i++)
-				{
-				outx = 0.0;
-				outy = 0.0;
-				outz = 0.0;
-				tot_mass = 0.0;
-				
-				for(j = 0; j < outframe->sites[i].num_in_site; j++)
-					{
-					//check to see if coordinates are wrapped (and reset out* values)
-					dist = outframe->sites[i].coord[j].x - outframe->sites[i].coord[0].x;
-					box = outframe->xmax - outframe->xmin;
-					if( abs(dist) >= (box/2.0) )
-						{
-						if(dist > 0) outframe->sites[i].coord[j].x -= box;
-						else		 outframe->sites[i].coord[j].x += box;
-						}
-								
-					dist = outframe->sites[i].coord[j].y - outframe->sites[i].coord[0].y;
-					box = outframe->ymax - outframe->ymin;
-					if( abs(dist) >= (box/2.0) )
-						{
-						if(dist > 0) outframe->sites[i].coord[j].y -= box;
-						else		 outframe->sites[i].coord[j].y += box;
-						}
-								
-					dist = outframe->sites[i].coord[j].z - outframe->sites[i].coord[0].z;
-					box = outframe->zmax - outframe->zmin;
-					if( abs(dist) >= (box/2.0) )
-						{
-						if(dist > 0) outframe->sites[i].coord[j].z -= box;
-						else		 outframe->sites[i].coord[j].z += box;
-						}
-						
-					//add value to weighted sum
-					outx += outframe->sites[i].coord[j].x;
-					outy += outframe->sites[i].coord[j].y;
-					outz += outframe->sites[i].coord[j].z;
-					tot_mass += outframe->sites[i].coord[j].mass;
-					}
-				
-				//calculate average positions
-				outframe->sites[i].x = outx / outframe->sites[i].num_in_site;
-				outframe->sites[i].y = outy / outframe->sites[i].num_in_site;
-				outframe->sites[i].z = outz / outframe->sites[i].num_in_site;
-				
-				//check if final coordinate is in box (wrap)
-				if( outframe->sites[i].x > outframe->xmax ) outframe->sites[i].x -= outframe->xmax - outframe->xmin;
-				if( outframe->sites[i].x < outframe->xmin ) outframe->sites[i].x += outframe->xmax - outframe->xmin;
-				if( outframe->sites[i].y > outframe->ymax ) outframe->sites[i].y -= outframe->ymax - outframe->ymin;
-				if( outframe->sites[i].y < outframe->ymin ) outframe->sites[i].y += outframe->ymax - outframe->ymin;
-				if( outframe->sites[i].z > outframe->zmax ) outframe->sites[i].z -= outframe->zmax - outframe->zmin;
-				if( outframe->sites[i].z < outframe->zmin ) outframe->sites[i].z += outframe->zmax - outframe->zmin;
-					
-				//set total mass
-				outframe->sites[i].mass = tot_mass;
-				}
-			}		
+		geometry_mapping(control, inframe, outframe);
+
 		}
 		
 	outframe->num_mol = mol_count;		
 }
 
+//////////////////////////////////////
+///   combine_sensitivity_data	  ///
+/////////////////////////////////////
+
 void combine_sensitivity_data(Controller* control, Frame* inframe1, Frame* inframe2, Frame* outframe)
 {
 	//declare variables
 	int i, j, k;
-	//int found = 0;
+
 	double scalar = control->log_value - control->guess;
 
 	//printf("in combine\n");
@@ -848,6 +362,333 @@ void combine_sensitivity_data(Controller* control, Frame* inframe1, Frame* infra
 				//printf("pair matched for i = %d j = %d k = %d\n", i, j, k);
 				}
 			break;
+			}
+		}
+}
+
+/////////////////////////////
+///   determine_type	 ///
+///////////////////////////
+
+void determine_type(Controller* control, Frame* inframe, Frame* outframe, int* current, int* map)
+{
+	int j, k, l;
+	int found = 0;
+	
+	int num_matches = 0;
+	int min_loc = -1;
+	int tie = 0;
+	int min_val = 99;
+	
+	
+	//see if type is determined 
+	if(outframe->sites[*map].type == -1)
+		{
+		//see how many matches remain
+		for(j = 0; j < control->num_cg_types; j++) //loop through all prototypes
+			{
+			
+			if(outframe->sites[*map].matches[j] == 1) //only consider if they are still in the running
+				{
+				//verify if newest type is still a match
+				found = 0;
+					
+				if( control->prototype[j].num == min_val) tie++;
+				if( control->prototype[j].num < min_val)
+					{
+					min_loc = j;
+					min_val = control->prototype[j].num;
+					tie = 0;
+					}
+				
+				for(k = 0; k < control->prototype[j].num; k++) //check all prototypes types
+					{
+					
+					if(inframe->atoms[*current].type == control->prototype[j].num_list[k])
+						{
+						found=1;
+						break;
+						}
+					}
+				}	
+				
+			if(found == 0)  outframe->sites[*map].matches[j] = 0;
+			else num_matches++;
+			}
+					
+		//see if we have a unique match (or need evaluation or no match)
+		if(num_matches > 1) //we need to force evaluation in tie-break
+			{
+			//check smallest
+			if( outframe->sites[*map].num_in_site > (min_val - 1) ) //we have to fail because the molecule is too large
+				{
+				outframe->sites[*map].matches[min_loc] = 0;
+				
+				//see if we need to do this for others
+				if(tie > 0)
+					{
+					for(j = min_loc; j < control->num_cg_types; j++)
+						{
+						if(outframe->sites[*map].matches[j] == min_val)
+							{
+								outframe->sites[*map].matches[j] = 0;
+								num_matches--;
+							}
+						}
+					}
+				}
+			
+			if(outframe->sites[*map].num_in_site == (min_val - 1)) //actual situations may arise where we need to use both this and the previous statements
+				{
+				//evaluate to determine if total match
+				
+				//declare and initialize tesiting prototype
+				int evaluate[ control->prototype[min_loc].num ];
+				for(j = 0; j < control->prototype[min_loc].num; j++) evaluate[j] = -1;
+				l = 1;
+				
+				//loop through site-type and record matches
+				for(j = 0; j < outframe->sites[*map].num_in_site; j++) //j is for site types
+					{
+					//try to match with each prototype type
+					for(k = 0; k < control->prototype[min_loc].num; k++)	//k is for prototype type
+						{
+						if( evaluate[k] == -1) //only consider if it is not yet claimed
+							{
+							if( outframe->sites[*map].coord[j].type == control->prototype[min_loc].num_list[k])
+								{
+								evaluate[k] = j;
+								break;	//this leaves the for loop in k and moves on to next type
+								}
+							}
+						//fail if we are still here at the last point and have not already last
+						if( k == (control->prototype[min_loc].num - 1) ) l = 0;
+						}
+					}
+				//also check new value
+				if(l == 1)
+					{
+					for(k = 0; k < control->prototype[min_loc].num; k++)
+						{
+						if (evaluate[k] == -1)
+							{
+							if( inframe->atoms[*current].type == control->prototype[min_loc].num_list[k] )
+								{
+								evaluate[k] = outframe->sites[*map].num_in_site + 1;
+								break;
+								}
+							}
+						}
+					}
+				
+				//if we have failed the evaluate
+				if(l == 0)
+					{
+					outframe->sites[*map].matches[min_loc] = 0;
+					num_matches--;
+					}
+					
+				//what if it passes and there a tie?
+				
+				//if there are no unkown sites (temporary pass)
+				else if(l == 1)
+					{
+					//check that all prototypes entries are used
+					for(k = 0; k < control->prototype[min_loc].num; k++)
+						{
+						if(evaluate[k] == -1) l = 0;
+						}
+									
+					if(l == 0)
+						{
+						outframe->sites[*map].matches[min_loc] = 0;
+						num_matches--;
+						}
+					else if(l == 1)
+						{
+						num_matches = 1; 
+						//set all other matches values to zero
+						for(k = 0; k < control->num_cg_types; k++)
+							{
+							outframe->sites[*map].matches[min_loc] = 0;
+							}
+						outframe->sites[*map].matches[min_loc] = 1;
+						}
+					}
+				}
+			}
+
+		if(num_matches == 1) //we have a unique winner
+			{
+			//find and set type
+			for(j = 0; j < control->num_cg_types; j++)
+				{
+				if(outframe->sites[*map].matches[j] == 1)
+					{
+					outframe->sites[*map].type = j + 1;
+					//if( (j + 1) > outframe->type_count) outframe->type_count = j + 1;
+					
+					outframe->type_num[j] += 1;
+					
+					//check all known types to see if this is a match
+					l = 0;
+					for(k = 0; k < outframe->type_count; k++) 
+						{
+						if(outframe->type[k] == outframe->sites[*map].type)
+							{
+								l = 1;
+							}
+						}
+					
+					if(l == 0)
+						{
+						outframe->type[outframe->type_count] = outframe->sites[*map].type;
+						outframe->type_count++;
+						printf("outframe->type count is now %d after %d atoms read\n", outframe->type_count, *current);
+						}
+					}
+				}
+			}
+		else if(num_matches == 0)
+			{
+			//there is either a new molecule or an error in the inputs
+			 printf("ERROR: NO MOLECULE TYPE MATCH !!!\n");
+			}
+				
+		}
+}	
+
+/////////////////////////////
+///   geometry_mapping	  ///
+/////////////////////////////
+
+void geometry_mapping(Controller* control, Frame* inframe, Frame* outframe)
+{
+	int i, j;
+	double outx, outy, outz;
+	double tot_mass;
+	double dist, box;
+	
+	//apply averaging and processing
+	if(control->geometry_map_flag == 0) //map to CoM
+		{
+		for(i = 0; i < outframe->num_atoms; i++)
+			{
+			outx = 0.0;
+			outy = 0.0;
+			outz = 0.0;
+			tot_mass = 0.0;
+				
+			for(j = 0; j < outframe->sites[i].num_in_site; j++)
+				{
+				//check to see if coordinates are wrapped (and reset out* values)
+				dist = outframe->sites[i].coord[j].x - outframe->sites[i].coord[0].x;
+				box = outframe->xmax - outframe->xmin;
+				if( abs(dist) >= (box/2.0) )
+					{
+					if(dist > 0) outframe->sites[i].coord[j].x -= box;
+					else		 outframe->sites[i].coord[j].x += box;
+					}					
+					
+				dist = outframe->sites[i].coord[j].y - outframe->sites[i].coord[0].y;
+				box = outframe->ymax - outframe->ymin;
+				if( abs(dist) >= (box/2.0) )
+					{
+					if(dist > 0) outframe->sites[i].coord[j].y -= box;
+					else		 outframe->sites[i].coord[j].y += box;
+					}	
+					
+				dist = outframe->sites[i].coord[j].z - outframe->sites[i].coord[0].z;
+				box = outframe->zmax - outframe->zmin;
+				if( abs(dist) >= (box/2.0) )
+					{
+					if(dist > 0) outframe->sites[i].coord[j].z -= box;
+					else		 outframe->sites[i].coord[j].z += box;
+					}
+						
+				//add value to weighted sum
+				outx += outframe->sites[i].coord[j].x * outframe->sites[i].coord[j].mass;
+				outy += outframe->sites[i].coord[j].y * outframe->sites[i].coord[j].mass;
+				outz += outframe->sites[i].coord[j].z * outframe->sites[i].coord[j].mass;
+				tot_mass += outframe->sites[i].coord[j].mass;
+				}
+				
+			//calculate average positions
+			outframe->sites[i].x = outx / tot_mass;
+			outframe->sites[i].y = outy / tot_mass;
+			outframe->sites[i].z = outz / tot_mass;
+
+			//check if final coordinate is in box (wrap)
+			if( outframe->sites[i].x > outframe->xmax ) outframe->sites[i].x -= outframe->xmax - outframe->xmin;
+			if( outframe->sites[i].x < outframe->xmin ) outframe->sites[i].x += outframe->xmax - outframe->xmin;
+			if( outframe->sites[i].y > outframe->ymax ) outframe->sites[i].y -= outframe->ymax - outframe->ymin;
+			if( outframe->sites[i].y < outframe->ymin ) outframe->sites[i].y += outframe->ymax - outframe->ymin;
+			if( outframe->sites[i].z > outframe->zmax ) outframe->sites[i].z -= outframe->zmax - outframe->zmin;
+			if( outframe->sites[i].z < outframe->zmin ) outframe->sites[i].z += outframe->zmax - outframe->zmin;
+					
+			//set total mass
+			outframe->sites[i].mass = tot_mass;
+			}
+							
+		}
+	else if(control->geometry_map_flag == 1) //map to CoG
+		{
+		for(i = 0; i < outframe->num_atoms; i++)
+			{
+			outx = 0.0;
+			outy = 0.0;
+			outz = 0.0;
+			tot_mass = 0.0;
+				
+			for(j = 0; j < outframe->sites[i].num_in_site; j++)
+				{
+				//check to see if coordinates are wrapped (and reset out* values)
+				dist = outframe->sites[i].coord[j].x - outframe->sites[i].coord[0].x;
+				box = outframe->xmax - outframe->xmin;
+				if( abs(dist) >= (box/2.0) )
+					{
+					if(dist > 0) outframe->sites[i].coord[j].x -= box;
+					else		 outframe->sites[i].coord[j].x += box;
+					}
+				
+				dist = outframe->sites[i].coord[j].y - outframe->sites[i].coord[0].y;
+				box = outframe->ymax - outframe->ymin;
+				if( abs(dist) >= (box/2.0) )
+					{
+					if(dist > 0) outframe->sites[i].coord[j].y -= box;
+					else		 outframe->sites[i].coord[j].y += box;
+					}
+				
+				dist = outframe->sites[i].coord[j].z - outframe->sites[i].coord[0].z;
+				box = outframe->zmax - outframe->zmin;
+				if( abs(dist) >= (box/2.0) )
+					{
+					if(dist > 0) outframe->sites[i].coord[j].z -= box;
+					else		 outframe->sites[i].coord[j].z += box;
+					}
+				
+				//add value to weighted sum
+				outx += outframe->sites[i].coord[j].x;
+				outy += outframe->sites[i].coord[j].y;
+				outz += outframe->sites[i].coord[j].z;
+				tot_mass += outframe->sites[i].coord[j].mass;
+				}
+			
+			//calculate average positions
+			outframe->sites[i].x = outx / outframe->sites[i].num_in_site;
+			outframe->sites[i].y = outy / outframe->sites[i].num_in_site;
+			outframe->sites[i].z = outz / outframe->sites[i].num_in_site;
+			
+			//check if final coordinate is in box (wrap)
+			if( outframe->sites[i].x > outframe->xmax ) outframe->sites[i].x -= outframe->xmax - outframe->xmin;
+			if( outframe->sites[i].x < outframe->xmin ) outframe->sites[i].x += outframe->xmax - outframe->xmin;
+			if( outframe->sites[i].y > outframe->ymax ) outframe->sites[i].y -= outframe->ymax - outframe->ymin;
+			if( outframe->sites[i].y < outframe->ymin ) outframe->sites[i].y += outframe->ymax - outframe->ymin;
+			if( outframe->sites[i].z > outframe->zmax ) outframe->sites[i].z -= outframe->zmax - outframe->zmin;
+			if( outframe->sites[i].z < outframe->zmin ) outframe->sites[i].z += outframe->zmax - outframe->zmin;
+					
+			//set total mass
+			outframe->sites[i].mass = tot_mass;
 			}
 		}
 }

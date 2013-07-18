@@ -131,7 +131,6 @@ void read_topology_file(Controller *control, char* topfile)
     
     read_number_in_line(control->num_cg_types, line, temp_mol); 
 	control->prototype = malloc(control->num_cg_types * sizeof(PROTO));
-    //control->threshold = 99;
     for(i = 0; i < control->num_cg_types; i++)
     	{
     	control->prototype[i].num = temp_mol[i];
@@ -144,8 +143,6 @@ void read_topology_file(Controller *control, char* topfile)
     		{
     		control->prototype[i].num_list[j] = temp_type[j];
     		}
-    	
-    	//if(control->prototype[i].num < control->threshold) control->threshold  = control->prototype[i].num;
     	}
     free(temp_mol);
 	free(temp_type);
