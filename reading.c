@@ -8,8 +8,9 @@ void read_topology_file(Controller*, char*);
 void read_frame(Controller*, Frame*, FILE*, int*);
 void read_frames_and_log(Controller*, Frame*, Frame*, FILE*, FILE*, FILE*, FILE*, int*);
 void read_charge_frames(Controller*, Frame*, int*);
+void read_charge_log(Controller*, int*);
 //slave functions
-void read_logfile(Controller*, FILE*, int*);
+void read_logfile(Controller*, FILE*, double*, int*);
 void read_guess(Controller*, FILE*, int*);
 void read_force_file(Controller*, char*, double*, double*,  int*);
 void read_number_in_line(int, char*, int*);
@@ -290,7 +291,8 @@ void read_topology_file(Controller *control, char* topfile)
     		fgets(line, 100, fr);
     		sscanf(line, "%s", name);
     		control->outfile[i] = fopen( name, "w+");
-    		}
+    		}	
+    	
     	}
     	
     printf("finished reading top file\n\n");
@@ -501,6 +503,7 @@ void read_frames_and_log(Controller* control, Frame* inframe1, Frame* inframe2, 
 	int test2 = 1;
 	int test_log = 1;
 	int guess_read = 1;
+	double double_val = 0.0;
 	
 	//read frames as usual
 	//printf("read frame 1\n");
@@ -520,7 +523,9 @@ void read_frames_and_log(Controller* control, Frame* inframe1, Frame* inframe2, 
 		}
 		
 	//printf("moving to logfile read\n");
-	read_logfile(control, lf, &test_log);
+	read_logfile(control, lf, &double_val, &test_log);
+	control->log_value = double_val;
+	
 	if(test_log == 0) 
 		{
 		*flag = 0;
@@ -563,11 +568,36 @@ void read_charge_frames(Controller* control, Frame* inframes, int* flag)
 		}
 }
 
+  //////////////////////////
+ //   read_charge_log	  ///
+//////////////////////////////
+
+void read_charge_log(Controller* control, int* flag)
+{
+	//declare variables
+	int i;
+	int temp = 1;
+	double double_temp = 0.0;
+	
+	//read in value for each of the log files and check that the process completed correctly
+	for(i = 0; i < control->num_files; i++)
+		{
+		read_logfile(control, control->file_point[i], &double_temp, &temp);
+		control->log_values[i] = double_temp;
+		
+		if(temp == 0)
+			{
+			*flag = 0;
+			return;
+			}
+		}
+}
+
   ////////////////////////
  //   read_logfile	  ///
 ////////////////////////
 
-void read_logfile(Controller* control, FILE* lf, int* flag)
+void read_logfile(Controller* control, FILE* lf, double* out_val, int* flag)
 {
 	//declare varaibles
 	int i;
@@ -599,7 +629,7 @@ void read_logfile(Controller* control, FILE* lf, int* flag)
 			test2[4] = '\0';
 			if( strcmp(test2, "Step") == 0) i = 0;			
 			//read next line
-			fgets(line, 100, lf);
+			//fgets(line, 100, lf);
 			
 			//check if we are at EOF
 			if( fgets (line, 100, lf) == NULL )
@@ -623,8 +653,12 @@ void read_logfile(Controller* control, FILE* lf, int* flag)
 	//printf("acutal logfile line reads %s\n", line);
 	sscanf(line, "%lf %lf %lf %lf %lf", &junk, &junk1, &val1, &val2, &junk2);
 	//printf("values read are %lf %lf %lf %lf %lf\n", junk, junk1, val1, val2, junk2); 
-	if(control->log_type == 0) control->log_value = val1;
-	else if(control->log_type == 1) control->log_value = val2;
+	
+	if(control->log_type == 0) *out_val = val1;
+	else if(control->log_type == 1) *out_val = val2;
+	
+	control->timestep = junk;
+	control->volume = junk2;
 }
 
 /////////////////////////

@@ -45,9 +45,11 @@
 // int  #guess type (0 = 1 column, 1 = log file similar log.lammps file)
 //ENDIF
 //IF sensitivity flag == 3
+// #blank
 // %s name of ID for tab potential (e.g. SENS_MEOH)
 //ENDIF
 //IF sensitivity flag == 2 or 4
+// #blank
 // int	#number of charges
 // int ... #charge value for each site in order
 // %s filenames for all input files (log for 2 or dump for 4) in order of self, followed by mixed interactions ordered by first index (e.g. 00, 11, 22, 01, 02, 12)
@@ -397,6 +399,85 @@ void do_force_conversion(Controller* control, char* infile, char* outfile)
 
 void do_charge_logfile_analysis(Controller* control, char* outfile)
 {
+	//declare variables
+	int cont_flag = 1;
+	int frame_count = 0;
+	int i = 0;
+	FILE* of;
+	
+	//allocate space for log_values
+	control->log_values = malloc( control->num_files * sizeof(double) );
+	control->guesses    = malloc( control->num_charges * sizeof(double) );
+	
+	//check that all files opened correctly
+	for(i = 0; i < control->num_files; i++)
+		{
+   		if(control->file_point[i] == NULL) 
+			{
+			printf("file number %d in list does not exist\n", (i+1) );
+			cont_flag = 0;
+			}
+		}
+		
+	//exit if there is an error
+	if( cont_flag == 0 )  
+		{
+		//close files openend and free allocated space
+		for(i = 0; i < control->num_files; i++) fclose(control->file_point[i]);
+		free(control->file_point);
+		exit(EXIT_SUCCESS);
+		}
+		
+	//read first frames
+	frame_count++;
+	control->frame++;
+	cont_flag = 1;
+	
+	//printf("test inframes\n");
+	
+	printf("reading first frame data for charge map\n");
+	read_charge_log(control, &cont_flag);
+	//printf("main: inframe[1].atoms[1].x = %lf\n", inframes[1].atoms[1].x);
+	while(cont_flag == 1)
+		{
+		//process/map frame
+		//printf("process logvalues\n");
+		process_charge_log(control);
+		//printf("finished processing frame\n");
+		
+		//output mapped frame and observables
+		output_charge_log(control);
+		//printf("finished output for frame %d\n", frame_count);
+		
+		//read next frame or set flag if done
+		frame_count++;
+		control->frame++;
+		read_charge_log(control, &cont_flag);
+		//printf("cont_flag is %d\n", cont_flag);
+		}
+
+	//clean-up by freeing malloc-ed varaiables
+	free(control->log_values);
+
+	//close read files and output files
+	for(i = 0; i < control->num_files; i++)
+		{
+		fclose(control->file_point[i]);
+		}
+
+	//printf("free2\n");
+	for(i = 0; i < control->num_charges; i++)
+		{
+		//printf("free outfile\n");
+		fclose(control->outfile[i]);
+		}
+	
+	//free file pointer holders
+	free(control->file_point);
+	free(control->outfile);
+	free(control->charge);
+	
+
 }
 
 //////////////////////////////////////
@@ -505,7 +586,7 @@ void do_charge_dump_analysis(Controller* control, char* outfile)
 	free(inframes);
 	free(outframes);
 	
-	//fire file pointer holders
+	//free file pointer holders
 	free(control->file_point);
 	free(control->outfile);
 	free(control->charge);

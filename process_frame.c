@@ -10,10 +10,12 @@ void map_some_atoms(Controller*, Frame*, Frame*);
 //sensitivity functions
 void combine_sensitivity_data(Controller*, Frame*, Frame*, Frame*);
 void process_charge_frames(Controller*, Frame*, Frame*);
+void process_charge_log(Controller*);
 //slave functions (newer modularization)
 void determine_type(Controller*, Frame*, Frame*, int*, int*);
 void geometry_mapping(Controller*, Frame*, Frame*);
 void composite_charge_frame(Controller*, Frame*, Frame*, int, int*, int*);
+void composite_charge_log(Controller*, int, int*, int*);
 //key/hash functions
 void key_lookup(int, int, int, int*);
 void reverse_key_lookup(int, int, int*, int*);
@@ -454,6 +456,53 @@ void process_charge_frames(Controller* control, Frame* inframes, Frame* outframe
 	
 }
 
+/////////////////////////////////
+///   process_charge_log	 ///
+////////////////////////////////
+
+void process_charge_log(Controller* control)
+{
+		//declare variables
+	int i, j;
+	int self;
+	int temp, count;
+	int* own = malloc( (control->num_charges) * sizeof(int) );
+	int* mixed;
+	if(control->num_charges > 1) mixed = malloc( (control->num_charges - 1) * sizeof(int) );
+	else mixed = malloc( sizeof(int) );
+	
+	//printf("set-up inteactions\n");
+	//set-up own-array for like-like interactions
+	for(i = 0; i < control->num_charges; i++) own[i] = i;
+	
+	//create composite outputs for each charge
+	for(i = 0; i < control->num_charges; i++)
+		{
+		//set-up key-list for each run 
+		self = i;
+		count = 0;
+		for(j = 0; j < control->num_charges; j++)
+			{
+			if(i != j)
+				{
+				key_lookup(self, j, control->num_charges, &temp);
+				//printf("self = %d, j = %d, size=%d, mixed id is %d\n", self, j, control->num_charges, temp);
+				mixed[count] = temp;
+				//mixed_charge[count] = control->charge[i];
+				count++;
+				}
+			}
+		//own array does not change
+		
+		//call functions with pre-set templates
+		//printf("composite!\n");
+		composite_charge_log(control, self, own, mixed);
+		}
+		
+	//free template information
+	free(own);
+	free(mixed);	
+}
 /////////////////////////////
 ///   determine_type	 ///
 ///////////////////////////
@@ -835,6 +884,12 @@ void composite_charge_frame(Controller* control, Frame* mapframes, Frame* outfra
 			}
 		}
 		
+	scalar = 2.0 * control->charge[self];
+	for(i = 0; i < control->num_charges; i++)
+		{
+		if(i != self) scalar -= control->charge[i];
+		}
+	
 	//printf("copy basic info\n");
 	//copy frame info on basic info
 	for(i = 0; i < outframe->num_atoms; i++)
@@ -951,6 +1006,57 @@ void composite_charge_frame(Controller* control, Frame* mapframes, Frame* outfra
 			}
 		}
 	//printf("done MIX\n");
+}
+
+//////////////////////////////////
+///   composite_charge_log	  ///
+/////////////////////////////////
+
+void composite_charge_log(Controller* control, int self, int* own, int* mixed)
+{
+	//declare and initalize variables
+	int i, j, k, l;
+	double scalar, key;
+	
+	//reset output value 
+	control->guesses[self] = 0.0;
+		
+	//printf("copy basic info\n");
+	//do SELF term
+	scalar = 2.0 * control->charge[self];
+	for(i = 0; i < control->num_charges; i++)
+		{
+		if(i != self) scalar -= control->charge[i];
+		}
+
+	control->guesses[self] += scalar * control->log_values[self];
+		
+	//printf("add OWN terms\n");
+	//ADD IN OWN TERMS (as they are matched -- one frame source at a time)
+	for(i = 0; i < control->num_charges; i++)
+		{
+		//only looking for not-self "own" terms
+		if(i == self) continue;
+		
+		scalar = control->charge[i];
+		control->guesses[self] -= scalar * control->log_values[ own[i] ];
+		}
+	
+	//printf("add MIXED terms\n");
+	//ADD IN MIXED TERMS (as they are matched -- one frame source at a time)
+	for(i = 0; i < (control->num_charges - 1); i++)
+		{
+		//only looking for not-self "own" terms
+		if(i == self) continue;
+		
+		//lookup pair from key
+		reverse_key_lookup(mixed[i], control->num_charges, &k, &l);
+		if(self == k) scalar = control->charge[l];
+		else scalar = control->charge[k];
+		
+		control->guesses[self] += scalar * control->log_values[ mixed[i] ];
+		}	
+	//printf("done MIX\n");	
 }
 
 //////////////////////////////////////////////

@@ -11,7 +11,8 @@ void output_frame_second3(Controller*, Frame*, char*);
 void output_topology(Controller*, Frame*);
 void output_force_file(Controller*, int, double*, double*, double*, char*);
 void output_charge_frames(Controller*, Frame*);
-	
+void output_charge_log(Controller*);
+
 //////////////////////////
 ///   output_frame	  ///
 /////////////////////////
@@ -601,5 +602,28 @@ void output_charge_frames(Controller* control, Frame* outframe)
 		output_frame_minimal_charge(control, &outframe[i], control->outfile[i]);
 		
 		//printf("output %d finished\n", i);
+		}
+}
+
+////////////////////////////
+///   output_charge_log  ///
+////////////////////////////
+
+void output_charge_log(Controller* control)
+{
+	//declare variables
+	int i;
+	
+	if(control->frame <= 1)
+		{
+		for(i = 0; i < control->num_charges; i++) 
+			{
+			fprintf(control->outfile[i], "Step PotEng E_vdwl E_coul Volume\n");
+			}
+		}
+	
+	for(i = 0; i < control->num_charges; i++)
+		{
+		fprintf(control->outfile[i], "%lf\t%lf\t%lf\t%lf\t%lf\n", control->timestep, control->guesses[i], 0.0, control->guesses[i], control->volume);
 		}
 }

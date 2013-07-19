@@ -39,6 +39,10 @@ typedef struct
 	double log_value;
 	double guess;
 	Filenames files;
+	double timestep, volume;
+	
+	double* log_values;
+	double* guesses;
 	
 	int* charge;
 	int num_charges, num_files, num_outfile;
