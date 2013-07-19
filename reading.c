@@ -2,14 +2,18 @@
 
 #include "headers.h"
 
+//main functions called from other files
 void parse_command_line_arguments(int, char**, char*, char*, char*);
 void read_topology_file(Controller*, char*);
 void read_frame(Controller*, Frame*, FILE*, int*);
 void read_frames_and_log(Controller*, Frame*, Frame*, FILE*, FILE*, FILE*, FILE*, int*);
+void read_charge_frames(Controller*, Frame*, int*);
+//slave functions
 void read_logfile(Controller*, FILE*, int*);
 void read_guess(Controller*, FILE*, int*);
 void read_force_file(Controller*, char*, double*, double*,  int*);
 void read_number_in_line(int, char*, int*);
+void read_number_in_line_float(int, char*, double*);
 void check_file_extension(char*, char*);
 void report_traj_input_suffix_error(char*);
 void report_usage_error(char*);
@@ -237,6 +241,57 @@ void read_topology_file(Controller *control, char* topfile)
     	fgets(line, 100,fr);//1st dump file
     	sscanf(line,"%s", control->files.guess); //name of tabulated output
     	}
+    
+    if( (control->sensitivity_flag == 2) || (control->sensitivity_flag == 4) )
+    	{
+		//routine specific variables
+		char name[64];
+		double* temp;
+	
+    	fgets(line,100,fr);//blank line
+    	
+    	fgets(line, 100,fr);//number of charges
+    	sscanf(line,"%d", &control->num_charges);
+    	control->num_files = 0;
+    	for(i = 1; i <= control->num_charges; i++) control->num_files += i;
+    	printf("num charges is %d and num_charges %d vs %d\n", control->num_charges, control->num_files, (int) round( control->num_files * ( (double) control->num_files * 0.5 + 0.5) ) );
+    	
+    	//read in charge values
+    	temp = malloc( control->num_charges * sizeof(int) );
+    	control->charge = malloc( control->num_charges * sizeof(int) );
+    	fgets(line, 100,fr);
+    	read_number_in_line_float(control->num_charges, line, temp);
+    	for(i = 0; i < control->num_charges; i++) 
+    		{
+    		printf("numbers read are %lf\n", temp[i]);
+    		control->charge[i] = temp[i]; 
+    		}
+    	free(temp);
+
+    	control->file_point = malloc( control->num_files * sizeof(FILE*) );
+    	//read in the necessary number of filenames
+    	printf("number of files expected is %d\n", control->num_files);
+    	for(i = 0; i < control->num_files; i++)
+    		{
+    		fgets(line, 100,fr);
+    		sscanf(line,"%s", name);
+    		control->file_point[i] = fopen(name, "rt");
+    		}
+    		
+    	//read # output files (as separator)
+    	fgets(line, 100, fr);
+    	sscanf(line,"%d", &i);
+    	if(i != control->num_charges) printf("ERROR: number of CHARGES does not agree with number of OUTPUT files\n");
+    	
+    	//allocate space for output file pointers and read in (and open files)
+    	control->outfile = malloc( control->num_charges * sizeof(FILE*) );
+    	for(i = 0; i < control->num_charges; i++)
+    		{
+    		fgets(line, 100, fr);
+    		sscanf(line, "%s", name);
+    		control->outfile[i] = fopen( name, "w+");
+    		}
+    	}
     	
     printf("finished reading top file\n\n");
 }
@@ -248,9 +303,13 @@ void read_topology_file(Controller *control, char* topfile)
 
 void read_frame(Controller* control, Frame* frame, FILE* df, int* flag)
 {
+	//printf("in read\n");
 	int i, j;
 	char line[100];
 	char test[15];
+	
+	//printf("control->num_observables is %d\n", control->num_observables);
+	//printf("frame->num_observables is %d\n", frame->num_observables);
 	frame->num_observables = control->num_observables;
 	
 	//printf("begin reading frame\n");
@@ -260,7 +319,7 @@ void read_frame(Controller* control, Frame* frame, FILE* df, int* flag)
 		*flag = 0;
 		printf("end of file reached in read_frame\n");
 		eof_exit(control, frame);
-		printf("finished eof_exit");
+		printf("finished eof_exit\n");
 		return;
 		}
 	
@@ -296,11 +355,11 @@ void read_frame(Controller* control, Frame* frame, FILE* df, int* flag)
     	{
     	if(frame->num_atoms == 0)	//do initial allocation
     		{
-    		printf("intial allocation of atoms \n");
+    		//printf("intial allocation of atoms \n");
     		frame->num_atoms = i;
 			frame->atoms = malloc(frame->num_atoms * sizeof(ATOM));
 			frame->num_observables = control->num_observables;
-			printf("set frame->num_observables to %d\n", frame->num_observables);
+			//printf("set frame->num_observables to %d\n", frame->num_observables);
 			}
 		else //number of atoms has changed
 			{
@@ -422,9 +481,11 @@ void read_frame(Controller* control, Frame* frame, FILE* df, int* flag)
 				printf("number of observables requested %d is not supported \n", frame->num_observables);
 				break;
 		}
+		//if( i < 10  && control->frame == 1) printf("read frame->atoms[%d].x = %lf\n", i, frame->atoms[i].x);
+		
 		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) frame->num_mol = frame->atoms[i].mol;
 		//printf("frame->atoms[%d].mol %d and frame->num_mol %d\n", i, frame->atoms[i].mol, frame->num_mol);
-		//if(frame->atoms[i].mol > frame->num_mol)	frame->num_mol = frame->atoms[i].mol;
+
 	}
 	//finished reading frame
 }
@@ -477,6 +538,29 @@ void read_frames_and_log(Controller* control, Frame* inframe1, Frame* inframe2, 
 	//do test on flags to determine composite (0 in any is a fail)
 	*flag = test1 && test2 && test_log && guess_read;
 	//printf("flag result is %d\n", *flag);
+}
+
+  ////////////////////////////////
+ //   read_charge_frames	  ///
+////////////////////////////////
+void read_charge_frames(Controller* control, Frame* inframes, int* flag)
+{
+	//declare variables
+	int i;
+	int temp = 1;
+	
+	//read each frame in turn
+	for(i = 0; i < control->num_files; i++)
+		{
+		//printf("read frame %d\n", i);
+		read_frame(control, &inframes[i], control->file_point[i], &temp);
+		//printf("result is %d\n", temp);
+		if(temp == 0)
+			{
+			*flag = 0;
+			return;
+			}
+		}
 }
 
   ////////////////////////
@@ -720,6 +804,53 @@ void read_number_in_line(int num_vals, char* line, int* vals)
 		
 		case 9:
 			sscanf(line, "%d %d %d %d %d %d %d %d %d", &vals[0], &vals[1], &vals[2], &vals[3], &vals[4], &vals[5], &vals[6], &vals[7], &vals[8]);
+			break;
+		
+		case 0:	
+		default:
+			printf("zero or unsupported number of elements to read in\n");
+			break;
+		}
+}
+
+void read_number_in_line_float(int num_vals, char* line, double* vals)
+{
+	switch(num_vals)
+		{
+		case 1:
+			sscanf(line, "%lf", &vals[0]);
+			break;
+		
+		case 2:
+			sscanf(line, "%lf %lf", &vals[0], &vals[1]);
+			break;
+		
+		case 3:
+			sscanf(line, "%lf %lf %lf", &vals[0], &vals[1], &vals[2]);
+			break;
+		
+		case 4:
+			sscanf(line, "%lf %lf %lf %lf", &vals[0], &vals[1], &vals[2], &vals[3]);
+			break;
+		
+		case 5:
+			sscanf(line, "%lf %lf %lf %lf %lf", &vals[0], &vals[1], &vals[2], &vals[3], &vals[4]);
+			break;
+		
+		case 6:
+			sscanf(line, "%lf %lf %lf %lf %lf %lf", &vals[0], &vals[1], &vals[2], &vals[3], &vals[4], &vals[5]);
+			break;
+		
+		case 7:
+			sscanf(line, "%lf %lf %lf %lf %lf %lf %lf", &vals[0], &vals[1], &vals[2], &vals[3], &vals[4], &vals[5], &vals[6]);
+			break;
+		
+		case 8:
+			sscanf(line, "%lf %lf %lf %lf %lf %lf %lf %lf", &vals[0], &vals[1], &vals[2], &vals[3], &vals[4], &vals[5], &vals[6], &vals[7]);
+			break;
+		
+		case 9:
+			sscanf(line, "%lf %lf %lf %lf %lf %lf %lf %lf %lf", &vals[0], &vals[1], &vals[2], &vals[3], &vals[4], &vals[5], &vals[6], &vals[7], &vals[8]);
 			break;
 		
 		case 0:	

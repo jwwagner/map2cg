@@ -26,7 +26,7 @@
 // int  #observable mapping flag (0 = additive mappign)
 // int	#number observables to map
 // int  #output flag (0 = all, 1 = minimal, 2 = 1 value is #4 observable, 3 = 2nd sets of 3 values)
-// int  #sensitivity flag (0 = only map 1 file, 1 = map 2 files along with log data and guess, 2 unused, 3 = convert MSCGFM (1_1.dat) to (tab_ff.dat))
+// int  #sensitivity flag (0 = only map 1 file, 1 = map 2 files along with log data and guess, 2 Charge sensitivity analysis of logfile, 3 = convert MSCGFM (1_1.dat) to (tab_ff.dat), 4 = charge sensitivity analysis of forces and mapping (dump files) )
 //	 	#this line intentionally left blank
 // int  #mapping style flag (0 = 1:1 molecule entirely, 1 = implicit solvent)
 //IF mapping style flag == 1
@@ -47,6 +47,14 @@
 //IF sensitivity flag == 3
 // %s name of ID for tab potential (e.g. SENS_MEOH)
 //ENDIF
+//IF sensitivity flag == 2 or 4
+// int	#number of charges
+// int ... #charge value for each site in order
+// %s filenames for all input files (log for 2 or dump for 4) in order of self, followed by mixed interactions ordered by first index (e.g. 00, 11, 22, 01, 02, 12)
+// ...
+// int #output files (should agree with number of charges)
+// %s filenames for all output files
+// ...
 //		#end of input file, please left blank line at end
 
 //call with one of 4 options
@@ -76,8 +84,13 @@
 void do_simple_map(Controller*, Frame*, Frame*, char*, char*);
 void do_sensitivity_map(Controller*, Frame*, Frame*, char*);
 void do_force_conversion(Controller*, char*, char*);
+void do_charge_logfile_analysis(Controller*, char*);
+void do_charge_dump_analysis(Controller*, char*);
 void free_allocation(Controller*, Frame*, Frame*);
 void free_sensitivity_allocation(Controller*, Frame*, Frame*, Frame*); 
+//void free_charge_dump_allocation(Controller*, Frame**, Frame**);
+void free_inframes(Controller*, Frame*);
+void free_outframes(Controller*, Frame*);
 
 //////////////////////////
 ///      MAIN   	  ///
@@ -111,6 +124,8 @@ int main(int argc,char *argv[])
 	if(controls.sensitivity_flag == 0) do_simple_map(&controls, &frame, &outframe, datfile, outfile);
 	else if(controls.sensitivity_flag == 1) do_sensitivity_map(&controls, &frame, &outframe, outfile);	
 	else if(controls.sensitivity_flag == 3) do_force_conversion(&controls, datfile, outfile);
+	else if(controls.sensitivity_flag == 2) do_charge_logfile_analysis(&controls, outfile);
+	else if(controls.sensitivity_flag == 4) do_charge_dump_analysis(&controls, outfile);
 	
 	//free allocated variables
 	printf("free basic files\n");
@@ -126,7 +141,11 @@ int main(int argc,char *argv[])
 		printf("to free_allocation\n");
 		free_allocation(&controls, &frame, &outframe);
 		}
-		
+	else if( (controls.sensitivity_flag == 3) || (controls.sensitivity_flag == 4) )
+		{
+		free(controls.file_point);
+		}
+	
 	//print out run statistics
 	double final_cputime = clock();
 	printf("total run time was %lf seconds\n", (final_cputime - start_cputime)/( (double) CLOCKS_PER_SEC ) );
@@ -257,7 +276,7 @@ void do_sensitivity_map(Controller* controls, Frame* inframe1, Frame* outframe, 
 	//create top.in file for FM
 	output_topology(controls, outframe);
 	
-	printf("to free_sensitivity_allocation");
+	printf("to free_sensitivity_allocation\n");
 	//free allocated varaibles
 	free_sensitivity_allocation(controls, inframe1, &inframe2, outframe); 
 	printf("finished with sensitivity function\n");
@@ -372,9 +391,138 @@ void do_force_conversion(Controller* control, char* infile, char* outfile)
 	free(control->prototype);
 }
 
-//////////////////////////////
-///   free_allocation	  ///
-////////////////////////////
+//////////////////////////////////////////
+///   do_charge_logfile_analysis	  ///
+/////////////////////////////////////////
+
+void do_charge_logfile_analysis(Controller* control, char* outfile)
+{
+}
+
+//////////////////////////////////////
+///   do_charge_dump_analysis	  ///
+////////////////////////////////////
+
+void do_charge_dump_analysis(Controller* control, char* outfile)
+{
+	int cont_flag = 1;
+	int frame_count = 0;
+	int i = 0;
+
+   	Frame* inframes;
+   	inframes = malloc(control->num_files * sizeof(Frame));
+	Frame* outframes;
+	outframes = malloc(control->num_charges * sizeof(Frame));
+
+	FILE* of;
+	
+	//set outframe atoms
+	for(i = 0; i < control->num_charges; i++)
+		{
+		outframes[i].num_atoms = 0;
+		}
+	//open input dump files are already open
+	//toggle output
+	of  = fopen(outfile, "w+");
+	fclose(of);
+	
+	//check that all files opened correctly
+	for(i = 0; i < control->num_files; i++)
+		{
+   		inframes[i].num_atoms = 0;
+		if(control->file_point[i] == NULL) 
+			{
+			printf("file number %d in list does not exist\n", (i+1) );
+			cont_flag = 0;
+			}
+		}
+		
+	//exit if there is an error
+	if( cont_flag == 0 )  
+		{
+		//close files openend and free allocated space
+		for(i = 0; i < control->num_files; i++) fclose(control->file_point[i]);
+		free(control->file_point);
+		free(inframes);
+		free(outframes);
+		exit(EXIT_SUCCESS);
+		}
+	
+	//read first frames
+	frame_count++;
+	control->frame++;
+	cont_flag = 1;
+	
+	//printf("test inframes\n");
+	
+	printf("reading first frame data for charge map\n");
+	read_charge_frames(control, inframes, &cont_flag);
+	//printf("main: inframe[1].atoms[1].x = %lf\n", inframes[1].atoms[1].x);
+	while(cont_flag == 1)
+		{
+		//process/map frame
+		//printf("process frame\n");
+		process_charge_frames(control, inframes, outframes);
+		//printf("finished processing frame\n");
+		
+		//output mapped frame and observables
+		output_charge_frames(control, outframes);
+		//printf("finished output for frame %d\n", frame_count);
+		
+		//read next frame or set flag if done
+		frame_count++;
+		control->frame++;
+		read_charge_frames(control, inframes, &cont_flag);
+		//printf("cont_flag is %d\n", cont_flag);
+		}
+
+	//close files for frame, log, and guess reading
+	
+	printf("to output_topology\n");
+	//create top.in file for FM
+	output_topology(control, &outframes[0] );
+	
+	//printf("to free_sensitivity_allocation\n");
+	//free allocated varaibles
+	
+	//close read files and output files
+	//also, free frame content 
+	for(i = 0; i < control->num_files; i++)
+		{
+		fclose(control->file_point[i]);
+		free_inframes(control, &inframes[i] );
+		}
+	//printf("free2\n");
+	for(i = 0; i < control->num_charges; i++)
+		{
+		//printf("free outfile\n");
+		fclose(control->outfile[i]);
+		//printf("free_outframes\n");
+		free_outframes(control, &outframes[i] );
+		}
+	//printf("free3\n");
+	//free frame holders
+	free(inframes);
+	free(outframes);
+	
+	//fire file pointer holders
+	free(control->file_point);
+	free(control->outfile);
+	free(control->charge);
+	
+	//printf("free prototypes\n");
+	//free prototypes
+	for(i = 0; i < control->num_cg_types; i++)
+		{
+		free(control->prototype[i].num_list);
+		}
+	free(control->prototype);
+
+}
+
+///////////////////////////////
+///		free_allocation		///
+///////////////////////////////
 
 void free_allocation(Controller* control, Frame* inframe, Frame* outframe)
 {
@@ -421,7 +569,7 @@ void free_sensitivity_allocation(Controller* control, Frame* inframe1, Frame* in
 	free(control->prototype);
 
 	//free inframe information
-	printf("free inframe information\n");
+	//printf("free inframe information\n");
 	for(i = 0; i < inframe1->num_atoms; i++)
 		{
 		free(inframe1->atoms[i].observables);	
@@ -432,18 +580,47 @@ void free_sensitivity_allocation(Controller* control, Frame* inframe1, Frame* in
 
 	
 	//free all data for atoms
-	printf("free outframe information\n");
+	//printf("free outframe information\n");
 	for(i = 0; i < outframe->num_atoms; i++)
 		{
 		free(outframe->sites[i].observables);
 		}
 	
-	printf("free sites\n");
+	//printf("free sites\n");
 	free(outframe->sites);
 	
-	printf("free type\n");
+	//printf("free type\n");
 	free(outframe->type);
 	
-	printf("free type_num");
+	//printf("free type_num");
 	free(outframe->type_num);
+}
+
+void free_inframes(Controller* control, Frame* inframe)
+{
+	int i;
+	
+	for(i = 0; i < inframe->num_atoms; i++)
+		{
+		free(inframe->atoms[i].observables);	
+		}
+	free(inframe->atoms);
+}
+	
+void free_outframes(Controller* control, Frame* outframe)
+{
+	int i;
+	//printf("free outframes1 with num_atoms %d\n", outframe->num_atoms);
+	for(i =	0; i < outframe->num_atoms; i++)
+		{
+		free(outframe->sites[i].observables);
+		//free(outframe->sites[i].coord);
+		}
+	
+	free(outframe->type);
+	free(outframe->type_num);
+	
+	if(control->frame > 1) free(outframe->sites);
+
+	//printf("end outframes\n");
 }

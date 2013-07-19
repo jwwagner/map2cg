@@ -5,10 +5,12 @@
 void output_frame(Controller*, Frame*, char*);
 void output_frame_all(Controller*, Frame*, char*);
 void output_frame_minimal(Controller*, Frame*, char*);
+void output_frame_minimal_charge(Controller*, Frame*, FILE*);
 void output_frame_4(Controller*, Frame*, char*);
 void output_frame_second3(Controller*, Frame*, char*);
 void output_topology(Controller*, Frame*);
 void output_force_file(Controller*, int, double*, double*, double*, char*);
+void output_charge_frames(Controller*, Frame*);
 	
 //////////////////////////
 ///   output_frame	  ///
@@ -310,6 +312,139 @@ void output_frame_minimal(Controller* control, Frame* outframe, char* outfile)
 	fclose(of);
 }
 
+/////////////////////////////////////
+///   output_frame_minimal_charge ///
+/////////////////////////////////////
+
+void output_frame_minimal_charge(Controller* control, Frame* outframe, FILE* of)
+{
+	int i, j;
+
+	//output frame header
+	fprintf(of, "ITEM: TIMESTEP\n");
+	fprintf(of, "%d\n", outframe->timestep);
+	fprintf(of, "ITEM: NUMBER OF ATOMS\n");
+	fprintf(of, "%d\n", outframe->num_atoms); //could also consider using outframe->num_mol
+	fprintf(of, "ITEM: BOX BOUNDS pp pp pp\n");
+	fprintf(of, "%lf %lf\n%lf %lf\n%lf %lf\n", outframe->xmin, outframe->xmax, outframe->ymin, outframe->ymax, outframe->zmin, outframe->zmax);
+
+	//printf("finished header\n");
+	
+	switch(outframe->num_observables)
+		{	
+		case 0:
+			fprintf(of, "ITEM: ATOMS x y z \n");
+			break;
+		
+		case 1:
+			fprintf(of, "ITEM: ATOMS x y z U \n");
+			break;
+			
+		case 3:
+			fprintf(of, "ITEM: ATOMS x y z fx fy fz \n");
+			break;
+		
+		case 4:
+			fprintf(of, "ITEM: ATOMS x y z dfx dfy dfz dU \n");
+			break;
+			
+		case 6:
+			fprintf(of, "ITEM: ATOMS x y z fx fy fz dfx dfy dfz \n");
+			break;
+			
+		case 7:
+			fprintf(of, "ITEM: ATOMS x y z fx fy fz dfx dfy dfz dU \n");
+			break;
+			
+		default:
+			printf("output number of observables not supported so giving generic 3 observable header\n");
+			fprintf(of, "ITEM: ATOMS x y z fx fy fz\n");
+			//for(i = 0; i < outframe->num_atoms; i++)
+		}
+		
+	//printf("writing data\n");
+	//printf("num_observables is %d\n", outframe->num_observables);
+	for( i = 0; i < outframe->num_atoms; i++)
+		{
+		switch(outframe->num_observables)
+			{
+			case 0:
+				fprintf(of, "%lf %lf %lf\n", outframe->sites[i].x, \
+				outframe->sites[i].y, outframe->sites[i].z);
+				break;
+			
+			case 1:
+				fprintf(of, "%lf %lf %lf %lf\n", outframe->sites[i].x, \
+				outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0]);
+				break;
+				
+			case 2:
+				fprintf(of, "%lf %lf %lf %lf %lf\n", outframe->sites[i].x, \
+				outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+				outframe->sites[i].observables[1]);
+				break;
+
+			case 3:
+				fprintf(of, "%lf %lf %lf %lf %lf %lf\n", outframe->sites[i].x, \
+				outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+				outframe->sites[i].observables[1], outframe->sites[i].observables[2]);
+				break;
+				
+			case 4:
+				fprintf(of, "%lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].x, \
+				outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+				outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
+				outframe->sites[i].observables[3]);
+				break;
+			
+			case 5:
+				fprintf(of, "%lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].x, \
+				outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+				outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
+				outframe->sites[i].observables[3], outframe->sites[i].observables[4]);
+				break;
+				
+			case 6:
+				fprintf(of, "%lf %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].x, \
+				outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+				outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
+				outframe->sites[i].observables[3], outframe->sites[i].observables[4], \
+				outframe->sites[i].observables[5]);
+				break;
+				
+			case 7:
+				fprintf(of, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].x, \
+				outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+				outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
+				outframe->sites[i].observables[3], outframe->sites[i].observables[4], \
+				outframe->sites[i].observables[5], outframe->sites[i].observables[6]);
+				break;
+				
+			case 8:
+				fprintf(of, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].x, \
+				outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+				outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
+				outframe->sites[i].observables[3], outframe->sites[i].observables[4], \
+				outframe->sites[i].observables[5], outframe->sites[i].observables[6], \
+				outframe->sites[i].observables[7]);
+				break;
+				
+			case 9:
+				fprintf(of, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].x, \
+				outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+				outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
+				outframe->sites[i].observables[3], outframe->sites[i].observables[4], \
+				outframe->sites[i].observables[5], outframe->sites[i].observables[6], \
+				outframe->sites[i].observables[7], outframe->sites[i].observables[8]);
+				break;
+			
+			default:
+				printf("number of observables to output is not supported in file writing\n");
+				break;
+			}
+		}
+}
+
 /////////////////////////////
 ///   output_frame_4	  ///
 /////////////////////////////
@@ -448,4 +583,23 @@ void output_force_file(Controller* control, int num, double* distance, double* p
 	printf("close output file\n");
 	//close file
 	fclose(fp);
+}
+
+///////////////////////////////
+///   output_charge_frames  ///
+///////////////////////////////
+
+void output_charge_frames(Controller* control, Frame* outframe)
+{
+	//declare variables
+	int i;
+	
+	//printf("output frames\n");
+	for(i = 0; i < control->num_charges; i++)
+		{
+		//printf("output %d\n", i);
+		output_frame_minimal_charge(control, &outframe[i], control->outfile[i]);
+		
+		//printf("output %d finished\n", i);
+		}
 }

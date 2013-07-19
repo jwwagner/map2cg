@@ -2,14 +2,24 @@
 
 #include "headers.h"
 
+//original functions
 void process_frame(Controller*, Frame*, Frame*);
 void process_frames_and_log(Controller*, Frame*, Frame*, Frame*);
 void map_all_atoms(Controller*, Frame*, Frame*); 
 void map_some_atoms(Controller*, Frame*, Frame*);
+//sensitivity functions
 void combine_sensitivity_data(Controller*, Frame*, Frame*, Frame*);
+void process_charge_frames(Controller*, Frame*, Frame*);
+//slave functions (newer modularization)
 void determine_type(Controller*, Frame*, Frame*, int*, int*);
 void geometry_mapping(Controller*, Frame*, Frame*);
+void composite_charge_frame(Controller*, Frame*, Frame*, int, int*, int*);
+//key/hash functions
+void key_lookup(int, int, int, int*);
+void reverse_key_lookup(int, int, int*, int*);
+//free functions
 void free_sensitivity_intermediates(Controller*, Frame*, Frame*);
+void free_charge_intermediates(Controller*, Frame*);
 
 //////////////////////////
 ///   process_frame	  ///
@@ -21,6 +31,7 @@ void process_frame(Controller* control, Frame* inframe, Frame* outframe)
 	int i, j;
 	outframe->type_count = 0;
 	
+	//printf("process_frame: inframe->atoms[1].x = %lf\n", inframe->atoms[1].x);
 	//printf("processing frame at step %d\n", control->frame);
 	
 	if( (control->frame == 1) || (control->sensitivity_flag == 1) )
@@ -106,6 +117,8 @@ void process_frame(Controller* control, Frame* inframe, Frame* outframe)
 		{
 		map_some_atoms(control, inframe, outframe);
 		}
+		
+	//printf("proces_frames: outframe->sites[1].x = %lf\n", outframe->sites[1].x);
 }
 
 /////////////////////////////////
@@ -153,7 +166,9 @@ void map_all_atoms(Controller* control, Frame* inframe, Frame* outframe)
 		key[i] = -1;
 		}
 
+	//printf("map_all_atoms: inframe->atoms[1].x = %lf\n", inframe->atoms[1].x);
 
+	
 	if(control->observable_map_flag == 0) //sum obesrvables
 		{
 		//process and sort all FG atoms
@@ -170,9 +185,10 @@ void map_all_atoms(Controller* control, Frame* inframe, Frame* outframe)
 				outframe->sites[key[mol_val]].mol = key[mol_val] + 1;
 				mol_count++;
 				}					
-			
+							
 			determine_type(control, inframe, outframe, &i, &key[mol_val]);
 			
+			//if(i == 1)
 			//printf("transfer information to CG site\n");
 			//transfer information to CG site
 			site_count = outframe->sites[ key[mol_val] ].num_in_site;
@@ -184,6 +200,9 @@ void map_all_atoms(Controller* control, Frame* inframe, Frame* outframe)
 			outframe->sites[key[mol_val]].coord[site_count].mass = inframe->atoms[i].mass;
 			outframe->sites[key[mol_val]].coord[site_count].type = inframe->atoms[i].type;
 			outframe->sites[key[mol_val]].q += inframe->atoms[i].q;
+			outframe->sites[ key[mol_val] ].num_in_site++;
+			//if(i == 1) printf("num_in_site for 1 is %d\n", outframe->sites[key[mol_val]].num_in_site);
+
 			//printf("outframe->sites[key[%d]].q = %lf\n", mol_val, outframe->sites[key[mol_val]].q);
 			
 			for(j = 0; j < outframe->num_observables; j++)
@@ -192,13 +211,16 @@ void map_all_atoms(Controller* control, Frame* inframe, Frame* outframe)
 				//printf("observable[%d] is %lf\n", j, outframe->sites[key[mol_val]].observables[j]);
 				}
 			//printf("finished observable transfer at num_in_site %d\n", outframe->sites[ key[mol_val] ].num_in_site);
-			outframe->sites[ key[mol_val] ].num_in_site++;
+			
 			}
 				
 		geometry_mapping(control, inframe, outframe);
 		
 		}
-		outframe->num_mol = mol_count;		
+	outframe->num_mol = mol_count;	
+		
+	//printf("map_all_atoms: outframe->sites[1].x = %lf\n", outframe->sites[1].x);
+
 }
 
 /////////////////////////////
@@ -364,6 +386,72 @@ void combine_sensitivity_data(Controller* control, Frame* inframe1, Frame* infra
 			break;
 			}
 		}
+}
+
+/////////////////////////////////
+///   process_charge_frames	 ///
+////////////////////////////////
+
+void process_charge_frames(Controller* control, Frame* inframes, Frame* outframes)
+{
+	//declare variables
+	int i, j;
+	int self;
+	int temp, count;
+	int* own = malloc( (control->num_charges) * sizeof(int) );
+	int* mixed;
+	if(control->num_charges > 1) mixed = malloc( (control->num_charges - 1) * sizeof(int) );
+	else mixed = malloc( sizeof(int) );
+	
+	//printf("process_charge_frames: inframes[1].atoms[1].x = %lf\n", inframes[1].atoms[1].x);
+	//create temporary frames
+	Frame* tempframes = malloc(control->num_files * sizeof(Frame));
+	
+	//map each frame in turn
+	for(i = 0; i < control->num_files; i++)
+		{
+		//printf("process frame %d\n", i);
+		//set-up each outframe as necessary
+		tempframes[i].num_atoms = 0;
+		
+		//process into CG
+		process_frame(control, &inframes[i], &tempframes[i] );
+		}
+	
+	//printf("set-up inteactions\n");
+	//set-up own-array for like-like interactions
+	for(i = 0; i < control->num_charges; i++) own[i] = i;
+	
+	//create composite outputs for each charge
+	for(i = 0; i < control->num_charges; i++)
+		{
+		//set-up key-list for each run 
+		self = i;
+		count = 0;
+		for(j = 0; j < control->num_charges; j++)
+			{
+			if(i != j)
+				{
+				key_lookup(self, j, control->num_charges, &temp);
+				//printf("self = %d, j = %d, size=%d, mixed id is %d\n", self, j, control->num_charges, temp);
+				mixed[count] = temp;
+				//mixed_charge[count] = control->charge[i];
+				count++;
+				}
+			}
+		//own array does not change
+		
+		//call functions with pre-set templates
+		//printf("composite!\n");
+		composite_charge_frame(control, tempframes, &outframes[i], self, own, mixed);
+		}
+		
+	//free template information
+	free(own);
+	free(mixed);
+	//free intermediate/temporary frames
+	free_charge_intermediates(control, tempframes);
+	
 }
 
 /////////////////////////////
@@ -544,7 +632,7 @@ void determine_type(Controller* control, Frame* inframe, Frame* outframe, int* c
 						{
 						outframe->type[outframe->type_count] = outframe->sites[*map].type;
 						outframe->type_count++;
-						printf("outframe->type count is now %d after %d atoms read\n", outframe->type_count, *current);
+						//printf("outframe->type count is now %d after %d atoms read\n", outframe->type_count, *current);
 						}
 					}
 				}
@@ -569,9 +657,13 @@ void geometry_mapping(Controller* control, Frame* inframe, Frame* outframe)
 	double tot_mass;
 	double dist, box;
 	
+	//printf("\ngeometry_mapping: inframe->atoms[1].x = %lf\n", inframe->atoms[1].x);
+	//printf("geometry_mapping: outframe->sites[1].coord[1].x = %lf\n", outframe->sites[1].coord[1].x);
+	
 	//apply averaging and processing
 	if(control->geometry_map_flag == 0) //map to CoM
 		{
+		//printf("COM\n");
 		for(i = 0; i < outframe->num_atoms; i++)
 			{
 			outx = 0.0;
@@ -614,6 +706,7 @@ void geometry_mapping(Controller* control, Frame* inframe, Frame* outframe)
 				}
 				
 			//calculate average positions
+			//if(i == 1) printf("outx = %lf, tot_mass = %lf from outframe->sites[%d].num_in_site = %d\n", outx, tot_mass, i, outframe->sites[i].num_in_site);
 			outframe->sites[i].x = outx / tot_mass;
 			outframe->sites[i].y = outy / tot_mass;
 			outframe->sites[i].z = outz / tot_mass;
@@ -691,6 +784,229 @@ void geometry_mapping(Controller* control, Frame* inframe, Frame* outframe)
 			outframe->sites[i].mass = tot_mass;
 			}
 		}
+	//printf("geometry_mapping: outframe->sites[1].x = %lf\n", outframe->sites[1].x);
+
+}
+
+/////////////////////////////////////
+///   composite_charge_frame	  ///
+/////////////////////////////////////
+
+void composite_charge_frame(Controller* control, Frame* mapframes, Frame* outframe, int self, int* own, int* mixed)//own is not actually needed assuming ordering
+{
+	//declare and initalize variables
+	int i, j, k, l;
+	int paired[mapframes[self].num_atoms];
+	double scalar, key;
+	for(i = 0; i < mapframes[self].num_atoms; i++) paired[i] = 0;
+
+	//popluate outframe with necessary general information
+	outframe->type_count = 0;
+	outframe->xmin = mapframes[self].xmin;
+	outframe->xmax = mapframes[self].xmax;
+	outframe->ymin = mapframes[self].ymin;
+	outframe->ymax = mapframes[self].ymax;
+	outframe->zmin = mapframes[self].zmin;
+	outframe->zmax = mapframes[self].zmax;
+	outframe->timestep = mapframes[self].timestep;
+	outframe->num_observables = mapframes[self].num_observables;
+	
+	//allocate type space and initalize
+	outframe->type = malloc(control->num_cg_types * sizeof(int));
+	outframe->type_num = malloc(control->num_cg_types * sizeof(int));
+
+	//copy types
+	for(i = 0; i< control->num_cg_types; i++)
+		{
+		outframe->type[i] = mapframes[self].type[i];
+		outframe->type_num[i] = mapframes[self].type_num[i];
+		}
+
+	//allocate site space
+	if(outframe->num_atoms != mapframes[self].num_atoms)
+		{
+		//printf("outframe->num_atoms set as %d compare to mapframes[0] of %d\n", outframe->num_atoms, mapframes[self].num_atoms);
+		outframe->num_atoms = control->num_cg_sites;
+		outframe->sites = malloc(outframe->num_atoms * sizeof(SITE));		
+		
+		for(i=0; i < outframe->num_atoms; i++)
+			{
+			outframe->sites[i].observables = malloc(outframe->num_observables * sizeof(double));
+			}
+		}
+		
+	//printf("copy basic info\n");
+	//copy frame info on basic info
+	for(i = 0; i < outframe->num_atoms; i++)
+		{
+		outframe->sites[i].num_in_site = 1;
+		outframe->sites[i].id = mapframes[self].sites[i].id;
+		outframe->sites[i].mol = mapframes[self].sites[i].mol;
+		outframe->sites[i].type = mapframes[self].sites[i].type;
+		outframe->sites[i].mass = mapframes[self].sites[i].mass;
+		outframe->sites[i].q = mapframes[self].sites[i].q;
+		outframe->sites[i].x = mapframes[self].sites[i].x;
+		outframe->sites[i].y = mapframes[self].sites[i].y;
+		outframe->sites[i].z = mapframes[self].sites[i].z;
+	
+		//ADD IN SELF TERM
+		for(j = 0; j < outframe->num_observables; j++) outframe->sites[i].observables[j] = scalar * mapframes[self].sites[i].observables[j];
+		
+		}
+		
+	//printf("add OWN terms\n");
+	//ADD IN OWN TERMS (as they are matched -- one frame source at a time)
+	for(i = 0; i < control->num_charges; i++)
+		{
+		//only looking for not-self "own" terms
+		if(i == self) continue;
+		
+		scalar = control->charge[i];
+		
+		//reinitalize paired array
+		for(j = 0; j < outframe->num_atoms; j++) paired[j] = 0;
+		
+		//printf("position matching\n");
+		//look for correct match based on position
+		for(j = 0; j < outframe->num_atoms; j++) //loop over destination sites
+			{
+			//if (j < 10 && control->frame == 1) printf("at atom %d where own[%d] is %d\n", j, i, own[i]);
+			for(k = 0; k < outframe->num_atoms; k++) //loop over potential mapframes site to find match
+				{	
+				//only consider sites that are not yet paired
+				if(paired[k] == 1) continue;
+				
+				//if( k < 5 && control->frame == 1)
+				//	{
+				//	printf("\ntest\n");
+				//	printf("outframe->sites[%d].x = %lf\n vs mapframes[%d]->sites[%d].x = %lf\n", j, outframe->sites[j].x, self, j, mapframes[self].sites[j].x);
+				//	printf("mapframes[ %d ]->num_atoms = %d\n", own[i], mapframes[ own[i] ].num_atoms);
+				//	printf("mapframes[ %d ]->sites[%d].x = %lf\n", own[i], k, mapframes[ own[i] ].sites[k].x);
+				//	}
+				//check each position and skip rest if failed (allow for some rounding error in mapping)
+				if( abs(outframe->sites[j].x - mapframes[ own[i] ].sites[k].x) > 0.001 ) continue;
+				if( abs(outframe->sites[j].y - mapframes[ own[i] ].sites[k].y) > 0.001 ) continue;
+				if( abs(outframe->sites[j].z - mapframes[ own[i] ].sites[k].z) > 0.001 ) continue;
+				//if(k < 10 && control->frame == 1) printf("passed position tests\n");
+				//for matched sites
+				paired[k] = 1;
+				//found = 1;
+				//combine "observable information"
+				for(l = 0; l < outframe->num_observables; l++)
+					{
+					outframe->sites[j].observables[l] -= scalar * mapframes[ own[i] ].sites[k].observables[l];
+					}
+				break;
+				}
+			//if(k < 10 && control->frame == 1) if(paired[k] == 1) printf("new match found for %d at %d\n", j, k);
+			}
+		}
+	
+	//printf("add MIXED terms\n");
+	//ADD IN MIXED TERMS (as they are matched -- one frame source at a time)
+	for(i = 0; i < (control->num_charges - 1); i++)
+		{
+		//only looking for not-self "own" terms
+		if(i == self) continue;
+		
+		//lookup pair from key
+		reverse_key_lookup(mixed[i], control->num_charges, &k, &l);
+		if(self == k) scalar = control->charge[l];
+		else scalar = control->charge[k];
+		
+		//reinitalize paired array
+		for(j = 0; j < outframe->num_atoms; j++) paired[j] = 0;
+		//printf("look for position\n");
+		//look for correct match based on position
+		for(j = 0; j < outframe->num_atoms; j++) //loop over destination sites
+			{
+			for(k = 0; k < outframe->num_atoms; k++) //loop over potential mapframes site to find match
+				{	
+				//only consider sites that are not yet paired
+				if(paired[k] == 1) continue;
+				
+				if( control->frame == 1)
+					{
+					//printf("\ntest: index values i=%d, j=%d, k=%d\n", i, j, k); 
+					//printf("In MIX for charge index %d and base %d \n", mixed[i], self);
+					//printf("outframe->sites[%d].x = %lf vs mapframes[%d]->sites[%d].x = %lf\n", j, outframe->sites[j].x, self, j, mapframes[self].sites[j].x);
+					//printf("abs(distances) = %lf\n", abs(outframe->sites[j].x - mapframes[ mixed[i] ].sites[k].x));
+					//printf("mapframes[ %d ]->sites[%d].x = %lf\n", own[i], k, mapframes[ own[i] ].sites[k].x);
+					}
+				//check each position and skip rest if failed (allow for some rounding error in mapping)
+				if( abs(outframe->sites[j].x - mapframes[ mixed[i] ].sites[k].x) > 0.001 ) continue;	
+				if( abs(outframe->sites[j].y - mapframes[ mixed[i] ].sites[k].y) > 0.001 ) continue;
+				if( abs(outframe->sites[j].z - mapframes[ mixed[i] ].sites[k].z) > 0.001 ) continue;
+			
+			//for matched sites
+				paired[k] = 1;
+				//found = 1;
+				//combine "observable information"
+				for(l = 0; l < outframe->num_observables; l++)
+					{
+					outframe->sites[j].observables[l] += scalar * mapframes[ mixed[i] ].sites[k].observables[l];
+					}
+				break;
+				}
+			}
+		}
+	//printf("done MIX\n");
+}
+
+//////////////////////////////////////////////
+///   key_lookup and reverse_key_lookup	  ///
+/////////////////////////////////////////////
+
+void key_lookup(int i, int j, int charge, int* key)
+{
+	int k;
+	*key = 0;
+	
+	if(i == j) *key = i;
+	else if(i < j)
+		{
+		for(k = 0; k <= i; k++)
+			{
+			*key += charge - k -1;
+			}
+		*key += j;
+		}
+	else if(i > j)
+		{
+		for(k = 0; k <= j; k++)
+			{
+			*key += charge - k -1;
+			}
+		*key += i;
+		}
+}
+
+void reverse_key_lookup(int key, int charge, int* i, int* j)
+{
+	int k, temp, count;
+	
+	if( key < charge)	//must be self pairing
+		{
+		*i = key;
+		*j = key;
+		return;
+		}
+		
+	//find smallest value for offset
+	temp = key - charge;
+	count = 0;
+	while(temp > 0)
+		{
+		temp -= (charge - count);
+		count++;
+		}
+	
+	*i = count; //we have identified the smallest of the pair
+	
+	//find other value
+	temp = key - 1;
+	for(k = 0; k <= count; k++) temp -= (charge + k);
+	*j = temp;
 }
 
 //////////////////////////////////////////////
@@ -719,4 +1035,26 @@ void free_sensitivity_intermediates(Controller* control, Frame* map1, Frame* map
 	
 	free(map1->type_num);
 	free(map2->type_num);
+}
+
+void free_charge_intermediates(Controller* control, Frame* mapframes)
+{
+	int i, j;
+	
+	
+	for(i = 0; i < control->num_files; i++)
+		{
+	
+		//free all data for atoms
+		for(j = 0; j < mapframes[0].num_atoms; j++)
+			{
+			free(mapframes[i].sites[j].observables);	
+			free(mapframes[i].sites[j].coord);
+			}
+		
+		free(mapframes[i].sites);
+		
+		free(mapframes[i].type);
+		free(mapframes[i].type_num);
+		}
 }

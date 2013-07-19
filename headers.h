@@ -39,6 +39,11 @@ typedef struct
 	double log_value;
 	double guess;
 	Filenames files;
+	
+	int* charge;
+	int num_charges, num_files, num_outfile;
+	FILE** file_point;
+	FILE** outfile;
 } Controller;
 
 typedef struct
