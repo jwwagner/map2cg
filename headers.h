@@ -21,7 +21,7 @@ typedef struct
 typedef struct
 {
 	int num_cg_sites, num_cg_types, num_fg_sites, num_fg_types;
-	int max_to_map;
+	int max_to_map, num_frames;
 	//int threshold;
 	PROTO* prototype;
 	
@@ -36,10 +36,10 @@ typedef struct
 
 	int log_type;
 	int guess_type;
-	double log_value;
-	double guess;
+	double log_value;	//should be able to write this variable out
+	double guess;		//should be able to write this variable out
 	Filenames files;
-	double timestep, volume;
+	double timestep, volume;	//only used for formatting output logfile
 	
 	double* log_values;
 	double* guesses;
@@ -48,6 +48,7 @@ typedef struct
 	int num_charges, num_files, num_outfile;
 	FILE** file_point;
 	FILE** outfile;
+	char* name;
 } Controller;
 
 typedef struct

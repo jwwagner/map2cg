@@ -12,6 +12,7 @@ void output_topology(Controller*, Frame*);
 void output_force_file(Controller*, int, double*, double*, double*, char*);
 void output_charge_frames(Controller*, Frame*);
 void output_charge_log(Controller*);
+void create_and_output_bootstrapping_file(Controller*, Frame*, int*, int*);
 
 //////////////////////////
 ///   output_frame	  ///
@@ -626,4 +627,34 @@ void output_charge_log(Controller* control)
 		{
 		fprintf(control->outfile[i], "%lf\t%lf\t%lf\t%lf\t%lf\n", control->timestep, control->guesses[i], 0.0, control->guesses[i], control->volume);
 		}
+}
+
+///////////////////////////////////////////////
+///   create_and_output_bootstrapping_file  ///
+///////////////////////////////////////////////
+
+void create_and_output_bootstrapping_file(Controller* control, Frame* frames, int* order, int* count)
+{
+	//declare variables
+	int i;
+	char filename[35] = "";
+	char suffix[] = "map.dat"; 
+	char num[5];
+	FILE* fp;
+
+	//determine name of output file 
+	snprintf(filename, sizeof filename, "%s%d%s", control->name, *count, suffix);
+	printf("open output file named %s\n", filename);
+	
+	//toggle output file to restart
+	fp = fopen(filename, "w+");
+	fclose(fp);
+	
+	//write each frame in order to file
+	for(i=0; i < control->num_frames; i++)
+		{
+		//printf("output_frame #%d as value frames[ %d ]\n", i, order[i]);
+		output_frame(control, &(frames[ order[i] ]), filename);
+		}
+	//printf("finished create_and_output_bootstrapping_file\n");
 }

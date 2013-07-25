@@ -47,7 +47,7 @@ void process_frame(Controller* control, Frame* inframe, Frame* outframe)
 	//printf("intializing types\n");
 	for(i = 0; i< control->num_cg_types; i++)
 		{
-		//printf("initalize types\n");
+		//printf("initalize type %d\n", i);
 		outframe->type[i] = -1;
 		outframe->type_num[i] = 0;
 		}
@@ -68,7 +68,7 @@ void process_frame(Controller* control, Frame* inframe, Frame* outframe)
 	//determine if we need to allocate sites
 	if(control->num_cg_sites != outframe->num_atoms) //assumes unitialized (0) although flexibility could be added to change number of sites (e.g. Grand Canonical Ensemble)
 		{
-		//printf("allocate sites for outframe to size %d\n", control->num_cg_sites);
+		printf("allocate sites for outframe to size %d\n", control->num_cg_sites);
 		outframe->num_atoms = control->num_cg_sites;
 		outframe->sites = malloc(outframe->num_atoms * sizeof(SITE));
 		
@@ -79,7 +79,7 @@ void process_frame(Controller* control, Frame* inframe, Frame* outframe)
 			outframe->sites[i].coord = malloc(control->max_to_map *sizeof(COORD));
 			outframe->sites[i].matches = malloc(control->num_cg_types * sizeof(int));
 			}
-		//printf("observables and coord space allocated\n");
+		printf("observables and coord space allocated\n");
 		}
 
 	//reset frame info
@@ -330,9 +330,12 @@ void combine_sensitivity_data(Controller* control, Frame* inframe1, Frame* infra
 	
 	//printf("allocate type with size %d and %d\n", control->num_cg_types, control->num_cg_types);
 	//allocate type space and initalize
-	outframe->type = malloc(control->num_cg_types * sizeof(int));
-	outframe->type_num = malloc(control->num_cg_types * sizeof(int));
-
+	if(control->frame == 1)
+		{
+		outframe->type = malloc(control->num_cg_types * sizeof(int));
+		outframe->type_num = malloc(control->num_cg_types * sizeof(int));
+		}
+		
 	//printf("copy types\n");
 	for(i = 0; i< control->num_cg_types; i++)
 		{
@@ -342,11 +345,22 @@ void combine_sensitivity_data(Controller* control, Frame* inframe1, Frame* infra
 
 	//printf("allocate combine space\n");
 	//allocate site space
-	outframe->num_atoms = control->num_cg_sites;
-	outframe->sites = malloc(outframe->num_atoms * sizeof(SITE));		
+	if(outframe->num_atoms != control->num_cg_sites)
+		{
+		outframe->num_atoms = control->num_cg_sites;
+		outframe->sites = malloc(outframe->num_atoms * sizeof(SITE));		
+		}
+	
+	if(control->frame == 1)
+		{
+		for(i=0; i < outframe->num_atoms; i++)
+			{
+			outframe->sites[i].observables = malloc(outframe->num_observables * sizeof(double));
+			}
+		}
 	for(i=0; i < outframe->num_atoms; i++)
 		{
-		outframe->sites[i].observables = malloc(outframe->num_observables * sizeof(double));
+		for(j = 0; j < outframe->num_observables; j++) outframe->sites[i].observables[j] = 0.0;
 		}
 
 	//printf("start conversion to outframe\n");
@@ -453,7 +467,7 @@ void process_charge_frames(Controller* control, Frame* inframes, Frame* outframe
 	free(mixed);
 	//free intermediate/temporary frames
 	free_charge_intermediates(control, tempframes);
-	
+	free(tempframes);
 }
 
 /////////////////////////////////
@@ -1131,6 +1145,9 @@ void free_sensitivity_intermediates(Controller* control, Frame* map1, Frame* map
 		
 		free(map1->sites[i].coord);
 		free(map2->sites[i].coord);
+		
+		free(map1->sites[i].matches);
+		free(map2->sites[i].matches);
 		}
 		
 	free(map1->sites);
@@ -1156,6 +1173,7 @@ void free_charge_intermediates(Controller* control, Frame* mapframes)
 			{
 			free(mapframes[i].sites[j].observables);	
 			free(mapframes[i].sites[j].coord);
+			free(mapframes[i].sites[j].matches);
 			}
 		
 		free(mapframes[i].sites);

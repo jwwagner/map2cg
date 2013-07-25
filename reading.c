@@ -9,6 +9,8 @@ void read_frame(Controller*, Frame*, FILE*, int*);
 void read_frames_and_log(Controller*, Frame*, Frame*, FILE*, FILE*, FILE*, FILE*, int*);
 void read_charge_frames(Controller*, Frame*, int*);
 void read_charge_log(Controller*, int*);
+void read_and_process_bootstrapping_trajectory(Controller*, Frame*, FILE*, int*);
+void read_bootstrapping_file(Controller*, int*, int*);
 //slave functions
 void read_logfile(Controller*, FILE*, double*, int*);
 void read_guess(Controller*, FILE*, int*);
@@ -200,7 +202,7 @@ void read_topology_file(Controller *control, char* topfile)
     		control->map[i] = i+1;
     		}
     	}
-    if(control->map_style_flag == 1)
+    else if(control->map_style_flag == 1)
     	{
     	fgets(line,100,fr);//12
     	sscanf(line, "%d", &control->num_map);
@@ -235,7 +237,7 @@ void read_topology_file(Controller *control, char* topfile)
     	sscanf(line, "%d", &control->guess_type);
     	}
     	
-    if(control->sensitivity_flag == 3)
+    else if(control->sensitivity_flag == 3)
     	{
     	fgets(line,100,fr);//blank line
     	
@@ -243,7 +245,7 @@ void read_topology_file(Controller *control, char* topfile)
     	sscanf(line,"%s", control->files.guess); //name of tabulated output
     	}
     
-    if( (control->sensitivity_flag == 2) || (control->sensitivity_flag == 4) )
+    else if( (control->sensitivity_flag == 2) || (control->sensitivity_flag == 4) )
     	{
 		//routine specific variables
 		char name[64];
@@ -258,13 +260,17 @@ void read_topology_file(Controller *control, char* topfile)
     	printf("num charges is %d and num_charges %d vs %d\n", control->num_charges, control->num_files, (int) round( control->num_files * ( (double) control->num_files * 0.5 + 0.5) ) );
     	
     	//read in charge values
-    	temp = malloc( control->num_charges * sizeof(int) );
+    	temp = malloc( control->num_charges * sizeof(double) );
+    	for(i = 0; i < control->num_charges; i++) 
+    		{
+    		temp[i] = 0;
+    		}
     	control->charge = malloc( control->num_charges * sizeof(int) );
     	fgets(line, 100,fr);
     	read_number_in_line_float(control->num_charges, line, temp);
     	for(i = 0; i < control->num_charges; i++) 
     		{
-    		printf("numbers read are %lf\n", temp[i]);
+    		printf("numbers read are %lf\n", temp[i] );
     		control->charge[i] = temp[i]; 
     		}
     	free(temp);
@@ -295,6 +301,27 @@ void read_topology_file(Controller *control, char* topfile)
     	
     	}
     	
+    else if(control->sensitivity_flag == 5)
+    	{
+    	printf("control->sensitivity_flag = %d\n", control->sensitivity_flag);
+    	control->charge = malloc( 2 * sizeof(int) );
+    	control->name = malloc( 32 * sizeof(char) );
+    	
+    	fgets(line,100,fr);//blank line
+    	
+    	fgets(line,100,fr);//start and end numbers for bootstrap files
+    	sscanf(line,"%d %d", &control->charge[0], &control->charge[1]); //name of tabulated output
+    	printf("bootstrap:%d %d\n", control->charge[0], control->charge[1]);
+    	
+    	fgets(line, 100,fr); //number of frames
+    	sscanf(line,"%d", &control->num_frames);
+    	
+    	fgets(line,100,fr);//base for bootstrap filenames
+    	sscanf(line,"%s", control->name);
+    	
+    	}
+
+	fclose(fr);
     printf("finished reading top file\n\n");
 }
 
@@ -358,9 +385,11 @@ void read_frame(Controller* control, Frame* frame, FILE* df, int* flag)
     	if(frame->num_atoms == 0)	//do initial allocation
     		{
     		//printf("intial allocation of atoms \n");
+    		if(frame->num_atoms != control->num_fg_sites) printf("num fg sites = %d does not match num atoms %d\n", control->num_fg_sites, i);
     		frame->num_atoms = i;
 			frame->atoms = malloc(frame->num_atoms * sizeof(ATOM));
 			frame->num_observables = control->num_observables;
+			for(j = 0; j < frame->num_atoms; j++) frame->atoms[j].mol = 0;
 			//printf("set frame->num_observables to %d\n", frame->num_observables);
 			}
 		else //number of atoms has changed
@@ -377,6 +406,7 @@ void read_frame(Controller* control, Frame* frame, FILE* df, int* flag)
 			frame->num_atoms = i;
 			frame->atoms = malloc(frame->num_atoms * sizeof(ATOM));
 			frame->num_mol = 0;
+			for(j = 0; j < frame->num_atoms; j++) frame->atoms[j].mol = 0;
 			}
 			
 		//allocate observable information
@@ -522,6 +552,8 @@ void read_frames_and_log(Controller* control, Frame* inframe1, Frame* inframe2, 
 		return;
 		}
 		
+	printf("1:inframe1->num_atoms = %d and inframe2->num_atoms = %d\n", inframe1->num_atoms, inframe2->num_atoms);
+	
 	//printf("moving to logfile read\n");
 	read_logfile(control, lf, &double_val, &test_log);
 	control->log_value = double_val;
@@ -543,6 +575,8 @@ void read_frames_and_log(Controller* control, Frame* inframe1, Frame* inframe2, 
 	//do test on flags to determine composite (0 in any is a fail)
 	*flag = test1 && test2 && test_log && guess_read;
 	//printf("flag result is %d\n", *flag);
+	
+	printf("2:inframe1->num_atoms = %d and inframe2->num_atoms = %d\n", inframe1->num_atoms, inframe2->num_atoms);
 }
 
   ////////////////////////////////
@@ -592,6 +626,84 @@ void read_charge_log(Controller* control, int* flag)
 			}
 		}
 }
+
+  ////////////////////////////////////////////////////
+ //   read_and_process_bootstrapping_trajectory	  ///
+/////////////////////////////////////////////////////
+
+void read_and_process_bootstrapping_trajectory(Controller* control, Frame* outframes, FILE* fp, int* flag)
+{
+	//declare variables
+	int i;
+	int temp = 1;
+	Frame inframe;
+	inframe.num_atoms = 0;
+	inframe.num_mol = 0;
+	control->frame = 1;
+	
+	for(i=0; i < control->num_frames; i++)
+		{
+		//read each frame into the appropriate structure
+		outframes[i].num_atoms = 0;
+		//printf("read_frame #%d\n", i);
+		read_frame(control, &inframe, fp, &temp);
+	
+		if(temp == 0)
+			{
+			*flag = 0;
+			break;
+			}
+		
+		//map that fine-grained frame to the appropriate coarse-grained frame
+		printf("process_frame #%d\n", i);
+		process_frame(control, &inframe, &(outframes[i]) );
+		}
+	
+	//free temp inframe
+	for(i = 0; i < inframe.num_atoms; i++)
+		{
+		free(inframe.atoms[i].observables);	
+		}
+	free(inframe.atoms);
+}
+
+  ///////////////////////////////////
+ //   read_bootstrapping_file	  ///
+/////////////////////////////////////
+
+void read_bootstrapping_file(Controller* control, int* frame_order, int* count)
+{
+	//declare variables
+	int i;
+	char filename[32] = "";
+	char line[100];
+	char suffix[] = ".dat"; 
+	char num[5];
+	FILE* fp;
+	
+	//determine file to read
+	snprintf(filename, sizeof filename, "%s%d%s", control->name, *count, suffix);
+	
+	//printf("file name to read is %s:\n", filename);
+	//open file
+	fp = fopen(filename, "rt");
+	//printf("file open for %s with result %p\n", filename, fp);
+	
+	//read file into array
+	for(i = 0; i < control->num_frames; i++)
+		{
+		//printf("read value to site %d\n", i);
+		fgets(line,100,fp);
+		//printf("READ:%s\n", line);
+		sscanf(line, "%d", &(frame_order)[i] );
+		//printf("read %d as %d\n", i, frame_order[i]);
+		}
+	
+	//close file
+	fclose(fp);
+	//printf("file closed\n");
+}
+
 
   ////////////////////////
  //   read_logfile	  ///
