@@ -36,6 +36,7 @@ typedef struct
 
 	int log_type;
 	int guess_type;
+	int sens_map_flag;
 	double log_value;	//should be able to write this variable out
 	double guess;		//should be able to write this variable out
 	Filenames files;

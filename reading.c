@@ -235,6 +235,9 @@ void read_topology_file(Controller *control, char* topfile)
     	
     	fgets(line,100,fr);//guess type
     	sscanf(line, "%d", &control->guess_type);
+    	
+    	fgets(line,100,fr);//mapping type
+    	sscanf(line, "%d", &control->sens_map_flag);
     	}
     	
     else if(control->sensitivity_flag == 3)
@@ -385,7 +388,17 @@ void read_frame(Controller* control, Frame* frame, FILE* df, int* flag)
     	if(frame->num_atoms == 0)	//do initial allocation
     		{
     		//printf("intial allocation of atoms \n");
-    		if(frame->num_atoms != control->num_fg_sites) printf("num fg sites = %d does not match num atoms %d\n", control->num_fg_sites, i);
+    		if(i != control->num_fg_sites) 
+    			{
+    				if(control->sens_map_flag == 1) 
+    					{
+    					if(i != control->num_cg_sites) printf("num cg sites = %d does not match num atoms %d\n", control->num_cg_sites, i);
+    					}
+    				else
+    					{
+    					printf("num fg sites = %d does not match num atoms %d\n", control->num_fg_sites, i);
+    					}
+    			}
     		frame->num_atoms = i;
 			frame->atoms = malloc(frame->num_atoms * sizeof(ATOM));
 			frame->num_observables = control->num_observables;

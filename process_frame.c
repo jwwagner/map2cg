@@ -5,10 +5,12 @@
 //original functions
 void process_frame(Controller*, Frame*, Frame*);
 void process_frames_and_log(Controller*, Frame*, Frame*, Frame*);
+void process_no_map_frames_and_log(Controller*, Frame*, Frame*, Frame*);
 void map_all_atoms(Controller*, Frame*, Frame*); 
 void map_some_atoms(Controller*, Frame*, Frame*);
 //sensitivity functions
 void combine_sensitivity_data(Controller*, Frame*, Frame*, Frame*);
+void combine_cg_sensitivity_data(Controller*, Frame*, Frame*, Frame*);
 void process_charge_frames(Controller*, Frame*, Frame*);
 void process_charge_log(Controller*);
 //slave functions (newer modularization)
@@ -148,6 +150,90 @@ void process_frames_and_log(Controller* control, Frame* inframe1, Frame* inframe
 	//printf("FREE INTERMEDIATES\n");
 	//free map data
 	free_sensitivity_intermediates(control, &map1, &map2);
+}
+
+void process_no_map_frames_and_log(Controller* control, Frame* inframe1, Frame* inframe2, Frame* outframe)
+{
+	//declare variables
+	int i, j;
+	int type, type_spot;
+	
+	//SKIP normal mapping for the 2 frames
+	
+//determine type and type_num information missing by not doing in-house mapping
+	//allocate space
+	if(control->frame == 1)
+		{
+		inframe1->type = malloc(control->num_cg_types * sizeof(int));
+		inframe1->type_num = malloc(control->num_cg_types * sizeof(int));
+		
+		inframe2->type = malloc(control->num_cg_types * sizeof(int));
+		inframe2->type_num = malloc(control->num_cg_types * sizeof(int));
+		}
+
+	//initailize OR reset values
+	for(i = 0; i< control->num_cg_types; i++)
+		{
+		//printf("initalize type %d\n", i);
+		inframe1->type[i] = -1;
+		inframe1->type_num[i] = 0;
+		
+		inframe2->type[i] = -1;
+		inframe2->type_num[i] = 0;
+		}
+	inframe1->type_count = 0;
+	inframe2->type_count = 0;
+	
+	//tabulate values
+	for(i = 0; i< inframe1->num_atoms; i++)
+		{
+		//FRAME 1
+		type = inframe1->atoms[i].type;
+		type_spot = -1;
+		//check if this is new type (if not, increment counter)
+		for(j = 0; j <= inframe1->type_count; i++)
+			{
+			if( inframe1->type[j] == type)
+				{
+				inframe1->type_num[j]++;
+				type_spot = j;
+				}
+			}
+		//handle new type
+		if(type_spot == -1)
+			{
+			inframe1->type_count++;
+			inframe1->type[inframe1->type_count] = type;
+			inframe1->type_num[inframe1->type_count]++;
+			}
+		
+		//FRAME 2
+		type = inframe2->atoms[i].type;
+		type_spot = -1;
+		//check if this is new type (if not, increment counter)
+		for(j = 0; j <= inframe2->type_count; i++)
+			{
+			if( inframe2->type[j] == type)
+				{
+				inframe2->type_num[j]++;
+				type_spot = j;
+				}
+			}
+		//handle new type
+		if(type_spot == -1)
+			{
+			inframe2->type_count++;
+			inframe2->type[inframe2->type_count] = type;
+			inframe2->type_num[inframe2->type_count]++;
+			}
+		
+		}
+		
+	//printf("COMBINATION called\n");
+//do combination of files to get final output
+	combine_cg_sensitivity_data(control, inframe1, inframe2, outframe);
+
+	//SKIP: free map data since "map frames were not needed"
 }
 
 //////////////////////////
@@ -397,6 +483,109 @@ void combine_sensitivity_data(Controller* control, Frame* inframe1, Frame* infra
 			for(k = 0; k < outframe->num_observables; k++)
 				{
 				outframe->sites[i].observables[k] = inframe2->sites[j].observables[k] - scalar * inframe1->sites[i].observables[k];
+				//printf("pair matched for i = %d j = %d k = %d\n", i, j, k);
+				}
+			break;
+			}
+		}
+}
+
+//////////////////////////////////////
+///   combine_cg_sensitivity_data	  ///
+/////////////////////////////////////
+
+void combine_cg_sensitivity_data(Controller* control, Frame* inframe1, Frame* inframe2, Frame* outframe)
+{
+	//declare variables
+	int i, j, k;
+
+	double scalar = control->log_value - control->guess;
+
+	//printf("in combine\n");
+	int paired[inframe2->num_atoms];
+	
+	for(i = 0; i < inframe2->num_atoms; i++) paired[i] = 0;
+
+	//popluate outframe with necessary general information
+	outframe->type_count = 0;
+	outframe->xmin = inframe1->xmin;
+	outframe->xmax = inframe1->xmax;
+	outframe->ymin = inframe1->ymin;
+	outframe->ymax = inframe1->ymax;
+	outframe->zmin = inframe1->zmin;
+	outframe->zmax = inframe1->zmax;
+	outframe->timestep = inframe1->timestep;
+	outframe->num_observables = inframe1->num_observables;
+	
+	//printf("allocate type with size %d and %d\n", control->num_cg_types, control->num_cg_types);
+	//allocate type space and initalize
+	if(control->frame == 1)
+		{
+		outframe->type = malloc(control->num_cg_types * sizeof(int));
+		outframe->type_num = malloc(control->num_cg_types * sizeof(int));
+		}
+		
+	//printf("copy types\n");
+	for(i = 0; i< control->num_cg_types; i++)
+		{
+		outframe->type[i] = inframe1->type[i];
+		outframe->type_num[i] = inframe1->type_num[i];
+		}
+
+	//printf("allocate combine space\n");
+	//allocate site space
+	if(outframe->num_atoms != control->num_cg_sites)
+		{
+		outframe->num_atoms = control->num_cg_sites;
+		outframe->sites = malloc(outframe->num_atoms * sizeof(SITE));		
+		}
+	
+	if(control->frame == 1)
+		{
+		for(i=0; i < outframe->num_atoms; i++)
+			{
+			outframe->sites[i].observables = malloc(outframe->num_observables * sizeof(double));
+			}
+		}
+	for(i=0; i < outframe->num_atoms; i++)
+		{
+		for(j = 0; j < outframe->num_observables; j++) outframe->sites[i].observables[j] = 0.0;
+		}
+
+	//printf("start conversion to outframe\n");
+	//copy frame info on basic info
+	for(i = 0; i < outframe->num_atoms; i++)
+		{
+		//found = 0;
+		outframe->sites[i].num_in_site = 1;
+		outframe->sites[i].id = inframe1->atoms[i].id;
+		outframe->sites[i].mol = inframe1->atoms[i].mol;
+		outframe->sites[i].type = inframe1->atoms[i].type;
+		outframe->sites[i].mass = inframe1->atoms[i].mass;
+		outframe->sites[i].q = inframe1->atoms[i].q;
+		outframe->sites[i].x = inframe1->atoms[i].x;
+		outframe->sites[i].y = inframe1->atoms[i].y;
+		outframe->sites[i].z = inframe1->atoms[i].z;
+	
+		//look for correct match based on position
+		for(j = 0; j < inframe2->num_atoms; j++)
+			{
+			
+			//only consider sites that are not yet paired
+			if(paired[j] == 1) continue;
+			//printf("testing pairs as %d %d at %lf = %lf vs %lf\n", i, j, outframe->sites[i].x, inframe1->sites[j].x, inframe2->sites[j].x);
+			//check each position and skip rest if failed (allow for some rounding error in mapping)
+			if( abs(outframe->sites[i].x - inframe2->atoms[j].x) > 0.001 ) continue;
+			if( abs(outframe->sites[i].y - inframe2->atoms[j].y) > 0.001 ) continue;
+			if( abs(outframe->sites[i].z - inframe2->atoms[j].z) > 0.001 ) continue;
+			
+			//for matched sites
+			paired[j] = 1;
+			//found = 1;
+			//combine "observable information"
+			for(k = 0; k < outframe->num_observables; k++)
+				{
+				outframe->sites[i].observables[k] = inframe2->atoms[j].observables[k] - scalar * inframe1->atoms[i].observables[k];
 				//printf("pair matched for i = %d j = %d k = %d\n", i, j, k);
 				}
 			break;
