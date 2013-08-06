@@ -29,12 +29,17 @@ typedef struct
 	int output_flag;
 	int sensitivity_flag;
 	int map_style_flag;
+	int debug_flag;
+	int sign_flag;
 	
 	int num_map;
 	int frame;
 	int* map;
 
 	int log_type;
+	double scaleU1;
+	double scaleU2;
+	double scaleF;
 	int guess_type;
 	int sens_map_flag;
 	double log_value;	//should be able to write this variable out

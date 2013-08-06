@@ -396,7 +396,7 @@ void combine_sensitivity_data(Controller* control, Frame* inframe1, Frame* infra
 	//declare variables
 	int i, j, k;
 
-	double scalar = control->log_value - control->guess;
+	double scalar = control->log_value / control->scaleU1 - control->guess / control->scaleU2;
 
 	//printf("in combine\n");
 	int paired[inframe2->num_atoms];
@@ -423,6 +423,7 @@ void combine_sensitivity_data(Controller* control, Frame* inframe1, Frame* infra
 		}
 		
 	//printf("copy types\n");
+	outframe->type_count = inframe1->type_count;
 	for(i = 0; i< control->num_cg_types; i++)
 		{
 		outframe->type[i] = inframe1->type[i];
@@ -482,7 +483,8 @@ void combine_sensitivity_data(Controller* control, Frame* inframe1, Frame* infra
 			//combine "observable information"
 			for(k = 0; k < outframe->num_observables; k++)
 				{
-				outframe->sites[i].observables[k] = inframe2->sites[j].observables[k] - scalar * inframe1->sites[i].observables[k];
+				outframe->sites[i].observables[k] = inframe2->sites[j].observables[k] + control->sign_flag * scalar * inframe1->sites[i].observables[k];
+				outframe->sites[i].observables[k] /= control->scaleF;
 				//printf("pair matched for i = %d j = %d k = %d\n", i, j, k);
 				}
 			break;
@@ -490,9 +492,9 @@ void combine_sensitivity_data(Controller* control, Frame* inframe1, Frame* infra
 		}
 }
 
-//////////////////////////////////////
-///   combine_cg_sensitivity_data	  ///
-/////////////////////////////////////
+///////////////////////////////////////
+///   combine_cg_sensitivity_data 	///
+///////////////////////////////////////
 
 void combine_cg_sensitivity_data(Controller* control, Frame* inframe1, Frame* inframe2, Frame* outframe)
 {
@@ -526,6 +528,7 @@ void combine_cg_sensitivity_data(Controller* control, Frame* inframe1, Frame* in
 		}
 		
 	//printf("copy types\n");
+	outframe->type_count = inframe1->type_count;
 	for(i = 0; i< control->num_cg_types; i++)
 		{
 		outframe->type[i] = inframe1->type[i];

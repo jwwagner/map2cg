@@ -238,6 +238,45 @@ void read_topology_file(Controller *control, char* topfile)
     	
     	fgets(line,100,fr);//mapping type
     	sscanf(line, "%d", &control->sens_map_flag);
+    	
+    	fgets(line,100,fr);//debug flag
+    	sscanf(line, "%d", &control->debug_flag);
+    	
+    	//set scaleF flag
+    	double temp = 300.0 * 0.00198720414; //kcal/(mol K)
+    	if( (control->debug_flag == 3) || (control->debug_flag == 5) ) control->scaleF = temp;
+    	else control->scaleF = 1.0;
+    	
+    	//set scaleU flag
+    	control->scaleU1 = 1.0;
+    	control->scaleU2 = 1.0;
+    	if( ((control->debug_flag >= 2) && (control->debug_flag <= 5)) || (control->debug_flag == 7) ) 
+    		{
+    		control->scaleU1 *= temp;
+    		control->scaleU2 *= temp;
+    		}
+    		
+    	if( (control->debug_flag == 1) || (control->debug_flag == 4) || (control->debug_flag == 5) ) 
+    		{
+    		control->scaleU1 *= (double) control->num_cg_sites;
+    		control->scaleU2 *= (double) control->num_cg_sites;
+    		}
+    	if( (control->debug_flag == 6) || (control->debug_flag == 7) )
+    		{
+    		control->scaleU1 *= (double) control->num_fg_sites; 
+    		control->scaleU2 *= (double) control->num_cg_sites;
+    		}
+    	    	
+    	printf("control->debug_flag = %d\n", control->debug_flag);
+    	printf("control->num_fg_sites = %d\n", control->num_fg_sites);
+    	printf("control->num_cg_sites = %d\n", control->num_cg_sites);
+    	printf("SCALE F = %lf\n", control->scaleF);
+    	printf("SCALE U1 = %lf \n", control->scaleU1);
+    	printf("SCALE U2 = %lf \n", control->scaleU2);
+    	fgets(line,100,fr);//sign flag
+    	sscanf(line, "%d", &control->sign_flag);
+    	
+    	if( abs(control->sign_flag) != 1 ) printf("ERROR: INVALID SIGN FLAG = %d\n", control->sign_flag);
     	}
     	
     else if(control->sensitivity_flag == 3)
