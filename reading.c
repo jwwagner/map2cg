@@ -191,7 +191,9 @@ void read_topology_file(Controller *control, char* topfile)
     printf("num_observables %d\n", control->num_observables);
     printf("output_flag %d \n", control->output_flag);
     printf("\n");
+    printf("sensitivity_flag %d\n", control->sensitivity_flag);
     printf("map_style_flag %d\n", control->map_style_flag);
+  
     
     if(control->map_style_flag == 0)
     	{
@@ -204,13 +206,19 @@ void read_topology_file(Controller *control, char* topfile)
     	}
     else if(control->map_style_flag == 1)
     	{
+    	printf("reading num_map\n");
     	fgets(line,100,fr);//12
+    	fgets(line,100,fr);
     	sscanf(line, "%d", &control->num_map);
+    	printf("line is %s\n", line);
+    	
+    	printf("num_map is %d\n", control->num_map);
     	control->map = malloc(control->num_map * sizeof(int));
     	for(i=0; i < control->num_map; i++)
     		{
     		fgets(line,100,fr);
     		sscanf(line, "%d", &control->map[i]);
+    		//printf("reading %d as %d\n", i, control->map[i]);
     		}
     	}
     	
@@ -250,7 +258,7 @@ void read_topology_file(Controller *control, char* topfile)
     	//set scaleU flag
     	control->scaleU1 = 1.0;
     	control->scaleU2 = 1.0;
-    	if( ((control->debug_flag >= 2) && (control->debug_flag <= 5)) || (control->debug_flag == 7) ) 
+    	if( ((control->debug_flag >= 2) && (control->debug_flag <= 5)) || (control->debug_flag >= 7) )
     		{
     		control->scaleU1 *= temp;
     		control->scaleU2 *= temp;
@@ -266,6 +274,17 @@ void read_topology_file(Controller *control, char* topfile)
     		control->scaleU1 *= (double) control->num_fg_sites; 
     		control->scaleU2 *= (double) control->num_cg_sites;
     		}
+    		
+    	if( (control->debug_flag == 8) )
+    		{
+    		control->scaleU1 *= ((double) control->num_cg_sites) * 3.0;
+    		control->scaleU2 *= ((double) control->num_cg_sites) * 3.0;
+    		}
+    	if( (control->debug_flag == 9) )
+    		{
+    		control->scaleU1 *= ((double) control->num_fg_sites) * 3.0;
+    		control->scaleU2 *= ((double) control->num_cg_sites) * 3.0;
+    		}
     	    	
     	printf("control->debug_flag = %d\n", control->debug_flag);
     	printf("control->num_fg_sites = %d\n", control->num_fg_sites);
@@ -277,6 +296,7 @@ void read_topology_file(Controller *control, char* topfile)
     	sscanf(line, "%d", &control->sign_flag);
     	
     	if( abs(control->sign_flag) != 1 ) printf("ERROR: INVALID SIGN FLAG = %d\n", control->sign_flag);
+    	else printf("control->sign_flag = %d\n", control->sign_flag);
     	}
     	
     else if(control->sensitivity_flag == 3)

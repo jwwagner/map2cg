@@ -44,7 +44,7 @@
 // int	#log type (0 = vdW, 1 = Columb)
 // int  #guess type (0 = 1 column, 1 = log file similar log.lammps file)
 // int  #sensitivity mapping flag (0 = dump files are FG, 1 = dump files are CG)
-// int	#debug_flag (0 = normal, 1 = U/N_cg, 2 = U/temp, 3 = all/temp, 4=1+2, 5=1+3, 6 = N_cg and N_fg, 7 = 2 + 6)
+// int	#debug_flag (0 = normal, 1 = U/N_cg, 2 = U/temp, 3 = all/temp, 4=1+2, 5=1+3, 6 = N_cg and N_fg, 7 = 2 + 6, 8 = U/temp + U/3Ncg, 9 = U/temp + U/3N_fg and U/3N_cg)
 // int	#sign_flag (-1 = negative, +1 = positive)
 //ENDIF
 //IF sensitivity flag == 3

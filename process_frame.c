@@ -324,6 +324,8 @@ void map_some_atoms(Controller* control, Frame* inframe, Frame* outframe)
 	int go_flag;
 	int key[inframe->num_mol];
 	
+	//printf("in map_some_atoms\n");
+	
 	//intialize key
 	for(i = 0; i < inframe->num_mol; i++)
 		{
@@ -340,16 +342,20 @@ void map_some_atoms(Controller* control, Frame* inframe, Frame* outframe)
 			go_flag = 0;
 			for(j = 0; j < control->num_map; j++)
 				{
-				if(control->map[j] == inframe->atoms[i].id)
+				if(control->map[j] == inframe->atoms[i].type)
 					{
 					go_flag = 1;
 					break;
 					}
 				}
 			
+			
+			//printf("testing for atom %d with go_flag %d and type %d\n", i, go_flag, inframe->atoms[i].type);
+			
 			//everything from this point forward is the same as in map_all_atoms
 			if(go_flag == 0) continue;
 			
+			//printf("passed for atom %d with go_flag %d and type %d\n", i, go_flag, inframe->atoms[i].type);
 			//check to see if mol key is set
 			mol_val = inframe->atoms[i].mol - 1;
 			if(key[mol_val] == -1)
@@ -483,7 +489,7 @@ void combine_sensitivity_data(Controller* control, Frame* inframe1, Frame* infra
 			//combine "observable information"
 			for(k = 0; k < outframe->num_observables; k++)
 				{
-				outframe->sites[i].observables[k] = inframe2->sites[j].observables[k] + control->sign_flag * scalar * inframe1->sites[i].observables[k];
+				outframe->sites[i].observables[k] = inframe2->sites[j].observables[k] + ((double)control->sign_flag) * scalar * inframe1->sites[i].observables[k];
 				outframe->sites[i].observables[k] /= control->scaleF;
 				//printf("pair matched for i = %d j = %d k = %d\n", i, j, k);
 				}
