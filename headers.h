@@ -50,7 +50,7 @@ typedef struct
 	double* log_values;
 	double* guesses;
 	
-	int* charge;
+	double* charge;
 	int num_charges, num_files, num_outfile;
 	FILE** file_point;
 	FILE** outfile;

@@ -594,15 +594,15 @@ void output_force_file(Controller* control, int num, double* distance, double* p
 void output_charge_frames(Controller* control, Frame* outframe)
 {
 	//declare variables
-	int i;
+	int i=0;
 	
 	//printf("output frames\n");
 	for(i = 0; i < control->num_charges; i++)
 		{
-		//printf("output %d\n", i);
+		printf("output %d\n", i);
 		output_frame_minimal_charge(control, &outframe[i], control->outfile[i]);
 		
-		//printf("output %d finished\n", i);
+		printf("output %d finished\n", i);
 		}
 }
 

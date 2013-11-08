@@ -491,20 +491,15 @@ void do_charge_dump_analysis(Controller* control, char* outfile)
    	Frame* inframes;
    	inframes = malloc(control->num_files * sizeof(Frame));
 	Frame* outframes;
-	outframes = malloc(control->num_charges * sizeof(Frame));
+	outframes = malloc(control->num_files * sizeof(Frame));
 	
 	FILE* of;
 	
-	//initalize num_mol for inframes
+	//initalize num_mol for in/out-frames
 	for(i = 0; i < control->num_files; i++)
 		{
 		inframes[i].num_mol = 0;
 		inframes[i].num_atoms = 0;
-		}
-	
-	//set outframe atoms
-	for(i = 0; i < control->num_charges; i++)
-		{
 		outframes[i].num_atoms = 0;
 		}
 	//open input dump files are already open

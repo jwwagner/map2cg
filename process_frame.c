@@ -609,9 +609,11 @@ void combine_cg_sensitivity_data(Controller* control, Frame* inframe1, Frame* in
 void process_charge_frames(Controller* control, Frame* inframes, Frame* outframes)
 {
 	//declare variables
-	int i, j;
-	int self;
-	int temp, count;
+	int i = 0;
+	int j = 0;
+	int self = 0;
+	int temp = 0;
+	int count = 0;
 	int* own = malloc( (control->num_charges) * sizeof(int) );
 	int* mixed;
 	if(control->num_charges > 1) mixed = malloc( (control->num_charges - 1) * sizeof(int) );
@@ -624,15 +626,15 @@ void process_charge_frames(Controller* control, Frame* inframes, Frame* outframe
 	//map each frame in turn
 	for(i = 0; i < control->num_files; i++)
 		{
-		//printf("process frame %d\n", i);
+		printf("process frame %d\n", i);
 		//set-up each outframe as necessary
 		tempframes[i].num_atoms = 0;
 		
 		//process into CG
-		process_frame(control, &inframes[i], &tempframes[i] );
+		process_frame(control, &(inframes[i]), &(tempframes[i]) );
 		}
 	
-	//printf("set-up inteactions\n");
+	printf("set-up inteactions\n");
 	//set-up own-array for like-like interactions
 	for(i = 0; i < control->num_charges; i++) own[i] = i;
 	
@@ -656,7 +658,7 @@ void process_charge_frames(Controller* control, Frame* inframes, Frame* outframe
 		//own array does not change
 		
 		//call functions with pre-set templates
-		//printf("composite!\n");
+		printf("composite!\n");
 		composite_charge_frame(control, tempframes, &outframes[i], self, own, mixed);
 		}
 		

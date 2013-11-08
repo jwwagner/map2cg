@@ -110,10 +110,22 @@ void parse_command_line_arguments(int num_arg, char** arg, char* filename1, char
 
 void read_topology_file(Controller *control, char* topfile)
 {
-	int i, j;
+	int i=0;
+	int j=0;
 	FILE* fr = fopen(topfile, "rt");
     char line[100];
     
+    //initialize
+    control->num_cg_types = 0;
+    control->num_fg_types = 0;
+    control->map_style_flag = 0;
+    control->sensitivity_flag = 0;
+    control->debug_flag = 0;
+    control->num_charges = 0;
+	control->num_files = 0;
+	control->num_observables = 0;
+    
+    //read_input
     fgets(line,100,fr);//1
     sscanf(line, "%d", &control->num_cg_sites);
     
@@ -136,10 +148,14 @@ void read_topology_file(Controller *control, char* topfile)
     int* temp_mol = malloc(control->num_cg_types * sizeof(int));
     int* temp_type = malloc(control->max_to_map * sizeof(int));
     
+    for(i = 0; i < control->num_cg_types; i++) temp_mol[i] = 0;
+    
     read_number_in_line(control->num_cg_types, line, temp_mol); 
 	control->prototype = malloc(control->num_cg_types * sizeof(PROTO));
     for(i = 0; i < control->num_cg_types; i++)
     	{
+    	control->prototype[i].num = 0;
+    	
     	control->prototype[i].num = temp_mol[i];
     	control->prototype[i].num_list = malloc(control->prototype[i].num * sizeof(int));
     	
@@ -194,7 +210,6 @@ void read_topology_file(Controller *control, char* topfile)
     printf("sensitivity_flag %d\n", control->sensitivity_flag);
     printf("map_style_flag %d\n", control->map_style_flag);
   
-    
     if(control->map_style_flag == 0)
     	{
     	control->num_map = control->num_fg_types;
@@ -224,6 +239,8 @@ void read_topology_file(Controller *control, char* topfile)
     	
     if(control->sensitivity_flag == 1)
     	{
+    	control->debug_flag = 0;
+    	
     	fgets(line,100,fr);//blank line    	
     	
     	fgets(line,100,fr);//1st dump file
@@ -312,28 +329,30 @@ void read_topology_file(Controller *control, char* topfile)
 		//routine specific variables
 		char name[64];
 		double* temp;
-	
+	    
+	    
     	fgets(line,100,fr);//blank line
     	
     	fgets(line, 100,fr);//number of charges
     	sscanf(line,"%d", &control->num_charges);
-    	control->num_files = 0;
+    	
     	for(i = 1; i <= control->num_charges; i++) control->num_files += i;
-    	printf("num charges is %d and num_charges %d vs %d\n", control->num_charges, control->num_files, (int) round( control->num_files * ( (double) control->num_files * 0.5 + 0.5) ) );
+    	printf("num_charges is %d and num_files %d \n", control->num_charges, control->num_files); //, (int) round( control->num_charges * ( (double) control->num_files * 0.5 + 0.5) ) );
     	
     	//read in charge values
     	temp = malloc( control->num_charges * sizeof(double) );
+    	control->charge = malloc( control->num_charges * sizeof(double) );
     	for(i = 0; i < control->num_charges; i++) 
     		{
-    		temp[i] = 0;
+    		temp[i] = 0.0;
+    		control->charge[i] = temp[i];
     		}
-    	control->charge = malloc( control->num_charges * sizeof(int) );
     	fgets(line, 100,fr);
     	read_number_in_line_float(control->num_charges, line, temp);
     	for(i = 0; i < control->num_charges; i++) 
     		{
-    		printf("numbers read are %lf\n", temp[i] );
     		control->charge[i] = temp[i]; 
+    		printf("numbers read are %lf = %lf\n", temp[i], control->charge[i] );
     		}
     	free(temp);
 
@@ -348,19 +367,19 @@ void read_topology_file(Controller *control, char* topfile)
     		}
     		
     	//read # output files (as separator)
+    	i=0;
     	fgets(line, 100, fr);
     	sscanf(line,"%d", &i);
-    	if(i != control->num_charges) printf("ERROR: number of CHARGES does not agree with number of OUTPUT files\n");
+    	if(i != control->num_files) printf("ERROR: number of CHARGES does not agree with number of OUTPUT files (given: %d vs expected: %d)\n", i, control->num_files);
     	
     	//allocate space for output file pointers and read in (and open files)
-    	control->outfile = malloc( control->num_charges * sizeof(FILE*) );
-    	for(i = 0; i < control->num_charges; i++)
+    	control->outfile = malloc( control->num_files * sizeof(FILE*) );
+    	for(i = 0; i < control->num_files; i++)
     		{
     		fgets(line, 100, fr);
     		sscanf(line, "%s", name);
     		control->outfile[i] = fopen( name, "w+");
-    		}	
-    	
+    		}	 	
     	}
     	
     else if(control->sensitivity_flag == 5)
@@ -372,8 +391,8 @@ void read_topology_file(Controller *control, char* topfile)
     	fgets(line,100,fr);//blank line
     	
     	fgets(line,100,fr);//start and end numbers for bootstrap files
-    	sscanf(line,"%d %d", &control->charge[0], &control->charge[1]); //name of tabulated output
-    	printf("bootstrap:%d %d\n", control->charge[0], control->charge[1]);
+    	sscanf(line,"%lf %lf", &control->charge[0], &control->charge[1]); //name of tabulated output
+    	printf("bootstrap:%lf %lf\n", control->charge[0], control->charge[1]);
     	
     	fgets(line, 100,fr); //number of frames
     	sscanf(line,"%d", &control->num_frames);
@@ -395,7 +414,8 @@ void read_topology_file(Controller *control, char* topfile)
 void read_frame(Controller* control, Frame* frame, FILE* df, int* flag)
 {
 	//printf("in read\n");
-	int i, j;
+	int i=0;
+	int j=0;
 	char line[100];
 	char test[15];
 	
@@ -663,9 +683,9 @@ void read_charge_frames(Controller* control, Frame* inframes, int* flag)
 	//read each frame in turn
 	for(i = 0; i < control->num_files; i++)
 		{
-		//printf("read frame %d\n", i);
-		read_frame(control, &inframes[i], control->file_point[i], &temp);
-		//printf("result is %d\n", temp);
+		printf("read frame %d\n", i);
+		read_frame(control, &(inframes[i]), (control->file_point[i]), &temp);
+		printf("result is %d\n", temp);
 		if(temp == 0)
 			{
 			*flag = 0;
