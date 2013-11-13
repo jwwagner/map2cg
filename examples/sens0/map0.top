@@ -11,7 +11,7 @@
 0	#observable map flag	(0 additive)	
 3	#num observables			
 1	#output flag		(0 all, 1 minimal, 2 value #4, 3 second 3 values)
-0	#sensitivity (0 1dump, 1 2dump+log+guess, 2 charge log, 3 force, 4 charge dump, 5 bootstrap)
+0	#sensitivity (0 1dump, 1 2dump+log+guess, 3 force, 5 bootstrap, 6 Qii, 7 Qij)
 #blank								
 0		#mapping style flag #number of types to map #follow with type # on each line
 #blank

@@ -401,7 +401,83 @@ void read_topology_file(Controller *control, char* topfile)
     	sscanf(line,"%s", control->name);
     	
     	}
+	else if(control->sensitivity_flag == 6)
+    	{
+		//routine specific variables
+		char name[64];
+		double* temp;
+	    
+	    printf("\nreading for sensitivity_flag = 6\n");
+    	fgets(line,100,fr);//blank line
+		sscanf(line, "%s", name);
 
+    	//read in charge values
+    	control->num_charges = 1;
+    	control->charge = malloc( control->num_charges * sizeof(double) );
+    	fgets(line,100,fr);//read charge
+    	sscanf(line,"%lf", &control->charge[0]);
+    	printf("line for charge is %s = %lf\n", line, control->charge[0]);
+    	
+    	//read in filenames
+    	control->num_files = 1;
+    	control->file_point = malloc( control->num_files * sizeof(FILE*) );
+    	for(i = 0; i < control->num_files; i++)
+    		{
+    		fgets(line, 100,fr);
+    		sscanf(line,"%s", name);
+    		control->file_point[i] = fopen(name, "rt");
+    		printf("infile: %s = %s\n", name, line);
+    		}
+    		    	
+    	//allocate space for output file pointers and read in (and open files)
+    	control->num_outfile = 1;
+    	control->outfile = malloc( control->num_outfile * sizeof(FILE*) );
+    	for(i = 0; i < control->num_outfile; i++)
+    		{
+    		fgets(line, 100, fr);
+    		sscanf(line, "%s", name);
+    		control->outfile[i] = fopen( name, "w+");
+    		printf("outfile: %s = %s\n", name, line);
+    		}
+    			 	
+    	}
+    else if(control->sensitivity_flag == 7)
+    	{
+		//routine specific variables
+		char name[64];
+		double* temp;
+	    
+	    printf("\nreading for sensitivity_flag = 7\n");
+    	fgets(line,100,fr);//blank line
+    	//read in charge values
+    	control->num_charges = 2;
+    	control->charge = malloc( control->num_charges * sizeof(double) );
+    	fgets(line,100,fr);//read charge
+    	sscanf(line,"%lf %lf", &control->charge[0], &control->charge[1]);
+      	printf("line for charge is %s = %lf and %lf\n", line, control->charge[0], control->charge[1]);
+ 	
+    	//read in filenames
+    	control->num_files = 3;
+    	control->file_point = malloc( control->num_files * sizeof(FILE*) );
+    	for(i = 0; i < control->num_files; i++)
+    		{
+    		fgets(line, 100,fr);
+    		sscanf(line,"%s", name);
+    		control->file_point[i] = fopen(name, "rt");
+    		printf("infile: %s\n", name);
+    		}
+    		    	
+    	//allocate space for output file pointers and read in (and open files)
+    	control->num_outfile = 2;
+    	control->outfile = malloc( control->num_outfile * sizeof(FILE*) );
+    	for(i = 0; i < control->num_outfile; i++)
+    		{
+    		fgets(line, 100, fr);
+    		sscanf(line, "%s", name);
+    		control->outfile[i] = fopen( name, "w+");
+    		printf("outfile: %s\n", name);
+    		}	 	
+    	}
 	fclose(fr);
     printf("finished reading top file\n\n");
 }

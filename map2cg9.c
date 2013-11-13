@@ -26,8 +26,8 @@
 // int  #observable mapping flag (0 = additive mappign)
 // int	#number observables to map
 // int  #output flag (0 = all, 1 = minimal, 2 = 1 value is #4 observable, 3 = 2nd sets of 3 values)
-// int  #sensitivity flag (0 = only map 1 file, 1 = map 2 files along with log data and guess, 2 Charge sensitivity analysis of logfile, 3 = convert MSCGFM (1_1.dat) to (tab_ff.dat), 4 = charge sensitivity analysis of forces and mapping (dump files), 5 = bootstrapping rearrangement )
-//	 	#this line intentionally left blank
+// int  #sensitivity flag (0 = only map 1 file, 1 = map 2 files along with log data and guess, 2 Charge sensitivity analysis of logfile, 3 = convert MSCGFM (1_1.dat) to (tab_ff.dat), 4 = charge sensitivity analysis of forces and mapping (dump files), 5 = bootstrapping rearrangement, 6 = II CG charge force derivative, 7 = IJ CG charge force derivative)
+//	 	#this line intentionally left blank NOTE: 2 and 4 do NOT work (try 6, 7)
 // int  #mapping style flag (0 = 1:1 molecule entirely, 1 = implicit solvent)
 //IF mapping style flag == 1
 // int	#number of types to map
@@ -35,7 +35,8 @@
 // ...
 //ENDIF
 //		#this line intentionally left blank
-//IF sensitivity flag == 1
+//IF sensitivity flag == 1 (Composite FM derivative processing)
+//RECOMMEND: 4-1 debug flag (or 4+1, 8-1, 8+1)
 // %s filename for 1st dump (original data, regular parameters)
 // %s filename for 2nd dump (rerun data, force derivative wrt parameter, e.g., epsilon_11)
 // %s filename for log.lammps (rerun data, potential derivative wrt parameter, e.g., epsilon_11)
@@ -47,25 +48,31 @@
 // int	#debug_flag (0 = normal, 1 = U/N_cg, 2 = U/temp, 3 = all/temp, 4=1+2, 5=1+3, 6 = N_cg and N_fg, 7 = 2 + 6, 8 = U/temp + U/3Ncg, 9 = U/temp + U/3N_fg and U/3N_cg)
 // int	#sign_flag (-1 = negative, +1 = positive)
 //ENDIF
-//IF sensitivity flag == 3
+//IF sensitivity flag == 3 (convert FM output to LAMMPS TABULATED potential)
 // #blank
 // %s name of ID for tab potential (e.g. SENS_MEOH)
 //ENDIF
-//IF sensitivity flag == 2 or 4
-// #blank
-// int	#number of charges
-// int ... #charge value for each site in order
-// %s filenames for all input files (log for 2 or dump for 4) in order of self, followed by mixed interactions ordered by first index (e.g. 00, 11, 22, 01, 02, 12)
-// ...
-// int #output files (should agree with number of charges)
-// %s filenames for all output files
-// ...
-//		#end of input file, please left blank line at end
-//IF sensitivity flag == 5
+//IF sensitivity flag == 2 or 4 (DEFUNCT)
+//IF sensitivity flag == 5 (bootstrapping creation)
 // #blank
 // int int #start number of file and end number of file
 // int     #frames in trajectory
 // %s  #base name of file with ending "#.dat" -- output will be "base#map.dat"
+//IF sensitivity flag == 6 (II charge frames)
+// #blank
+// int #charge value
+// %s input filename 
+// %s filename for output
+//		#end of input file, please left blank line at end
+//IF sensitivity flag == 7 (IJ charge frames)
+// #blank
+// int int #charge values for each site in order of input files (II, JJ)
+// %s filename for mixed charge (IJ)
+// %s filename for 1st self interaction (II) 
+// %s filename for 2nd self interaction (JJ)
+// %s filename for output *I
+// %s filename for output *J
+//		#end of input file, please left blank line at end
 //ENDIF
 
 //call with one of 4 options
@@ -98,6 +105,8 @@ void do_force_conversion(Controller*, char*, char*);
 void do_charge_logfile_analysis(Controller*, char*);
 void do_charge_dump_analysis(Controller*, char*);
 void do_bootstrapping(Controller*, char*);
+void do_ii_charge_derivative(Controller*, Frame*, Frame*);
+void do_ij_charge_derivative(Controller*);
 void sensitivity_no_mapping(Controller*, FILE*, FILE*, FILE*, FILE*, FILE*, Frame*, Frame*, Frame*, char*);
 void sensitivity_with_mapping(Controller*, FILE*, FILE*, FILE*, FILE*, FILE*, Frame*, Frame*, Frame*, char*);
 //free 
@@ -123,8 +132,8 @@ int main(int argc,char *argv[])
    	frame.num_mol = 0;
    	frame.num_observables = 0;
 	outframe.num_atoms = 0;
-	outframe.num_observables = 0;
 	outframe.num_mol = 0;
+	outframe.num_observables = 0;
 	controls.frame = 0;
 	controls.sensitivity_flag = 0;
 	controls.num_cg_sites = 0;
@@ -150,9 +159,12 @@ int main(int argc,char *argv[])
 	if(controls.sensitivity_flag == 0) do_simple_map(&controls, &frame, &outframe, datfile, outfile);
 	else if(controls.sensitivity_flag == 1) do_sensitivity_map(&controls, &frame, &outframe, outfile);	
 	else if(controls.sensitivity_flag == 3) do_force_conversion(&controls, datfile, outfile);
+	else if(controls.sensitivity_flag == 5) do_bootstrapping(&controls, datfile);
+	else if(controls.sensitivity_flag == 6) do_ii_charge_derivative(&controls, &frame, &outframe);
+	else if(controls.sensitivity_flag == 7) do_ij_charge_derivative(&controls);
+	//defunct
 	else if(controls.sensitivity_flag == 2) do_charge_logfile_analysis(&controls, outfile);
 	else if(controls.sensitivity_flag == 4) do_charge_dump_analysis(&controls, outfile);
-	else if(controls.sensitivity_flag == 5) do_bootstrapping(&controls, datfile);
 	
 	//free allocated variables
 	printf("free basic files\n");
@@ -661,6 +673,218 @@ void do_bootstrapping(Controller* control, char* datfile)
 		{
 		free(control->prototype[i].num_list);
 	}
+	free(control->prototype);
+}
+
+///////////////////////////////////////////
+///		do_ii_charge_derivative			///
+///////////////////////////////////////////
+
+void do_ii_charge_derivative(Controller* control, Frame* inframe, Frame* outframe)
+{
+	int cont_flag = 1;
+	int frame_count = 0;
+	int i = 0;	
+	
+	if(control->file_point[i] == NULL) 
+		{
+		printf("file number %d in list does not exist\n", (i+1) );
+		cont_flag = 0;
+		}
+	
+	//exit if there is an error
+	if( cont_flag == 0 )  
+		{
+		//close files openend and free allocated space
+		fclose(control->file_point[i]);
+		free(control->file_point);
+		fclose(control->outfile[i]);
+		free(control->outfile);
+		exit(EXIT_SUCCESS);
+		}
+	
+	//read first frames
+	frame_count++;
+	control->frame++;
+	cont_flag = 1;
+		
+	printf("reading first frame data for charge map\n");
+	//read_charge_frames(control, inframe, &cont_flag);
+	read_frame(control, inframe, control->file_point[0], &cont_flag);
+
+	while(cont_flag == 1)
+		{
+		//process/map frame
+		printf("process frame\n");
+		process_ii_charge_frames(control, inframe, outframe);
+		printf("finished processing frame\n");
+		
+		//output mapped frame and observables
+		output_charge_frames(control, outframe);
+		//printf("finished output for frame %d\n", frame_count);
+		
+		//read next frame or set flag if done
+		frame_count++;
+		control->frame++;
+		//read_charge_frames(control, inframe, &cont_flag);
+		read_frame(control, inframe, control->file_point[0], &cont_flag);
+		printf("cont_flag is %d\n", cont_flag);
+		}
+
+	printf("to output_topology\n");
+	//create top.in file for FM
+	output_topology(control, outframe);
+	
+	//printf("to free_sensitivity_allocation\n");
+	//free allocated varaibles
+	
+	//close read files and output files
+	//also, free frame content 
+	for(i = 0; i < control->num_files; i++)
+		{
+		fclose(control->file_point[i]);
+		free_inframes(control, inframe);
+		}
+	//printf("free2\n");
+	for(i = 0; i < control->num_charges; i++)
+		{
+		//printf("free outfile\n");
+		fclose(control->outfile[i]);
+		//printf("free_outframes\n");
+		free_outframes(control, outframe );
+		}
+	//printf("free3\n");
+	//free frame holders
+	//free(inframes);
+	//free(outframes);
+	
+	//free file pointer holders
+	free(control->file_point);
+	free(control->outfile);
+	free(control->charge);
+	
+	//printf("free prototypes\n");
+	//free prototypes
+	for(i = 0; i < control->num_cg_types; i++)
+		{
+		free(control->prototype[i].num_list);
+		}
+	free(control->prototype);
+}
+
+///////////////////////////////////////////
+///		do_ij_charge_derivative			///
+///////////////////////////////////////////
+
+void do_ij_charge_derivative(Controller* control)
+{
+	int cont_flag = 1;
+	int frame_count = 0;
+	int i = 0;
+
+   	Frame* inframes;
+   	inframes = malloc(control->num_files * sizeof(Frame));
+	Frame* outframes;
+	outframes = malloc(control->num_outfile * sizeof(Frame));
+	
+	//initalize num_mol for in/out-frames
+	//and check that all files opened correctly
+	for(i = 0; i < control->num_files; i++)
+		{
+		inframes[i].num_mol = 0;
+		inframes[i].num_atoms = 0;
+		if(control->file_point[i] == NULL) 
+			{
+			printf("file number %d in list does not exist\n", (i+1) );
+			cont_flag = 0;
+			}
+		}
+	for(i = 0; i < control->num_outfile; i++)
+		{
+		outframes[i].num_mol = 0;
+		outframes[i].num_atoms = 0;
+		if(control->file_point[i] == NULL) 
+			{
+			printf("file number %d in list does not exist\n", (i+1) );
+			cont_flag = 0;
+			}
+		}
+	//exit if there is an error
+	if( cont_flag == 0 )  
+		{
+		//close files openend and free allocated space
+		for(i = 0; i < control->num_files; i++) fclose(control->file_point[i]);
+		free(control->file_point);
+		for(i = 0; i < control->num_outfile; i++) fclose(control->outfile[i]);
+		free(control->outfile);
+		free(inframes);
+		free(outframes);
+		exit(EXIT_SUCCESS);
+		}
+	
+	//read first frames
+	frame_count++;
+	control->frame++;
+	cont_flag = 1;
+		
+	printf("reading first frame data for charge map\n");
+	read_charge_frames(control, inframes, &cont_flag);
+	//printf("main: inframe[1].atoms[1].x = %lf\n", inframes[1].atoms[1].x);
+	while(cont_flag == 1)
+		{
+		//process/map frame
+		printf("process frame\n");
+		process_ij_charge_frames(control, inframes, outframes);
+		printf("finished processing frame\n");
+		
+		//output mapped frame and observables
+		output_charge_frames(control, outframes);
+		//printf("finished output for frame %d\n", frame_count);
+		
+		//read next frame or set flag if done
+		frame_count++;
+		control->frame++;
+		read_charge_frames(control, inframes, &cont_flag);
+		//printf("cont_flag is %d\n", cont_flag);
+		}
+	
+	printf("to output_topology\n");
+	//create top.in file for FM
+	output_topology(control, &outframes[0] );
+	
+	//printf("to free_sensitivity_allocation\n");
+	//free allocated variables	
+	//close read files and output files
+	//also, free frame content 
+	for(i = 0; i < control->num_files; i++)
+		{
+		fclose(control->file_point[i]);
+		free_inframes(control, &inframes[i] );
+		}
+	//printf("free2\n");
+	for(i = 0; i < control->num_charges; i++)
+		{
+		//printf("free outfile\n");
+		fclose(control->outfile[i]);
+		//printf("free_outframes\n");
+		free_outframes(control, &outframes[i] );
+		}
+	//printf("free3\n");
+	//free frame holders
+	free(inframes);
+	free(outframes);
+	
+	//free file pointer holders
+	free(control->file_point);
+	free(control->outfile);
+	free(control->charge);
+	
+	//printf("free prototypes\n");
+	//free prototypes
+	for(i = 0; i < control->num_cg_types; i++)
+		{
+		free(control->prototype[i].num_list);
+		}
 	free(control->prototype);
 }
 

@@ -597,7 +597,7 @@ void output_charge_frames(Controller* control, Frame* outframe)
 	int i=0;
 	
 	//printf("output frames\n");
-	for(i = 0; i < control->num_charges; i++)
+	for(i = 0; i < control->num_outfile; i++)
 		{
 		printf("output %d\n", i);
 		output_frame_minimal_charge(control, &outframe[i], control->outfile[i]);

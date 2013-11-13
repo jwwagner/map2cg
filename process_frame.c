@@ -12,6 +12,8 @@ void map_some_atoms(Controller*, Frame*, Frame*);
 void combine_sensitivity_data(Controller*, Frame*, Frame*, Frame*);
 void combine_cg_sensitivity_data(Controller*, Frame*, Frame*, Frame*);
 void process_charge_frames(Controller*, Frame*, Frame*);
+void process_ij_charge_frames(Controller*, Frame*, Frame*);
+void process_ii_charge_frames(Controller*, Frame*, Frame*);
 void process_charge_log(Controller*);
 //slave functions (newer modularization)
 void determine_type(Controller*, Frame*, Frame*, int*, int*);
@@ -612,8 +614,8 @@ void process_charge_frames(Controller* control, Frame* inframes, Frame* outframe
 	int i = 0;
 	int j = 0;
 	int self = 0;
-	int temp = 0;
 	int count = 0;
+	int temp;
 	int* own = malloc( (control->num_charges) * sizeof(int) );
 	int* mixed;
 	if(control->num_charges > 1) mixed = malloc( (control->num_charges - 1) * sizeof(int) );
@@ -668,6 +670,293 @@ void process_charge_frames(Controller* control, Frame* inframes, Frame* outframe
 	//free intermediate/temporary frames
 	free_charge_intermediates(control, tempframes);
 	free(tempframes);
+}
+
+/////////////////////////////////////
+///   process_ij_charge_frames	 ///
+///////////////////////////////////
+
+void process_ij_charge_frames(Controller* control, Frame* inframes, Frame* outframes)
+{
+	//declare variables
+	int i, j, k, l;
+	int type, type_spot;
+	double charge = 0.0;
+	int* paired1 = malloc(inframes[1].num_atoms * sizeof(int));
+	int* paired2 = malloc(inframes[2].num_atoms * sizeof(int));
+	int match1 = -1;
+	int match2 = -1;
+	for(i = 0; i < inframes[1].num_atoms; i++)
+		{
+		paired1[i] = 0;
+		paired2[i] = 0;
+		}
+
+	//PREPARE INFRAME FORMAT
+	//printf("Prepare inframe format\n");
+	//determine type and type_num information missing by not doing in-house mapping
+	//allocate space
+	if(control->frame == 1)
+		{
+		inframes[0].type = malloc(control->num_cg_types * sizeof(int));
+		inframes[0].type_num = malloc(control->num_cg_types * sizeof(int));
+		inframes[1].type = malloc(control->num_cg_types * sizeof(int));
+		inframes[1].type_num = malloc(control->num_cg_types * sizeof(int));
+		inframes[2].type = malloc(control->num_cg_types * sizeof(int));
+		inframes[2].type_num = malloc(control->num_cg_types * sizeof(int));
+		
+		outframes[0].type = malloc(control->num_cg_types * sizeof(int));
+		outframes[0].type_num = malloc(control->num_cg_types * sizeof(int));
+		outframes[1].type = malloc(control->num_cg_types * sizeof(int));
+		outframes[1].type_num = malloc(control->num_cg_types * sizeof(int));
+		}
+	//printf("initailize OR reset values\n");
+	for(k = 0; k< control->num_files; k++)
+		{
+		for(i = 0; i< control->num_cg_types; i++)
+			{
+			//printf("initalize type %d\n", i);
+			inframes[k].type[i] = -1;
+			inframes[k].type_num[i] = 0;
+			}
+		inframes[k].type_count = 0;
+		
+		//printf("tabulate values\n");
+		for(i = 0; i< inframes[k].num_atoms; i++)
+			{
+			type = inframes[k].atoms[i].type;
+			type_spot = -1;
+			//check if this is new type (if not, increment counter)
+			for(j = 0; j <= inframes[k].type_count; j++)
+				{
+				if( inframes[k].type[j] == type)
+					{
+					inframes[k].type_num[j]++;
+					type_spot = j;
+					}
+				}
+			//handle new type
+			if(type_spot == -1)
+				{
+				inframes[k].type_count++;
+				inframes[k].type[inframes[k].type_count] = type;
+				inframes[k].type_num[inframes[k].type_count]++;
+				}
+			}
+		}
+			
+	//printf("populate general information\n");
+	//populate general information in outframes
+	for(i = 0; i < control->num_outfile; i++)
+		{
+		outframes[i].type_count = 0;
+		outframes[i].xmin = inframes[0].xmin;
+		outframes[i].xmax = inframes[0].xmax;
+		outframes[i].ymin = inframes[0].ymin;
+		outframes[i].ymax = inframes[0].ymax;
+		outframes[i].zmin = inframes[0].zmin;
+		outframes[i].zmax = inframes[0].zmax;
+		outframes[i].timestep = inframes[0].timestep;
+		outframes[i].num_observables = inframes[0].num_observables;	
+
+		//copy types
+		for(j = 0; j< control->num_cg_types; j++)
+			{
+			outframes[i].type[j] = inframes[0].type[j];
+			outframes[i].type_num[j] = inframes[0].type_num[j];
+			}
+		//allocate site space
+		if(outframes[i].num_atoms != inframes[0].num_atoms)
+			{
+			outframes[i].num_atoms = control->num_cg_sites;
+			outframes[i].sites = malloc(outframes[i].num_atoms * sizeof(SITE));		
+		
+			for(j=0; j < outframes[i].num_atoms; j++)
+				{
+				outframes[i].sites[j].observables = malloc(outframes[i].num_observables * sizeof(double));
+				}
+			}
+		for(j = 0; j < outframes[i].num_atoms; j++)
+			{
+			outframes[i].sites[j].num_in_site = 1;
+			outframes[i].sites[j].id = inframes[0].atoms[j].id;
+			outframes[i].sites[j].mol = inframes[0].atoms[j].mol;
+			outframes[i].sites[j].type = inframes[0].atoms[j].type;
+			outframes[i].sites[j].mass = inframes[0].atoms[j].mass;
+			outframes[i].sites[j].q = inframes[0].atoms[j].q;
+			outframes[i].sites[j].x = inframes[0].atoms[j].x;
+			outframes[i].sites[j].y = inframes[0].atoms[j].y;
+			outframes[i].sites[j].z = inframes[0].atoms[j].z;
+			}
+		}
+	
+	//printf("look for matches based on position\n");
+	//look for correct match based on position
+	for(j = 0; j < inframes[0].num_atoms; j++) //loop over destination sites
+		{
+		//reset match each time
+		match1 = -1;
+		match2 = -1;
+		
+		for(k = 0; k < inframes[1].num_atoms; k++) //loop over potential inframe#1 site to find match
+			{	
+			//only consider sites that are not yet paired
+			if(paired1[k] == 1) continue;
+		
+			//check each position and skip rest if failed (allow for some rounding error in mapping)
+			if( abs(outframes[0].sites[j].x - inframes[1].atoms[k].x) > 0.001 ) continue;
+			if( abs(outframes[0].sites[j].y - inframes[1].atoms[k].y) > 0.001 ) continue;
+			if( abs(outframes[0].sites[j].z - inframes[1].atoms[k].z) > 0.001 ) continue;
+			//for matched sites
+			paired1[k] = 1;
+			match1 = k;
+			break;
+			}
+		for(k = 0; k < inframes[1].num_atoms; k++) //loop over potential inframe#1 site to find match
+			{	
+			//only consider sites that are not yet paired
+			if(paired2[k] == 1) continue;
+		
+			//check each position and skip rest if failed (allow for some rounding error in mapping)
+			if( abs(outframes[0].sites[j].x - inframes[2].atoms[k].x) > 0.001 ) continue;
+			if( abs(outframes[0].sites[j].y - inframes[2].atoms[k].y) > 0.001 ) continue;
+			if( abs(outframes[0].sites[j].z - inframes[2].atoms[k].z) > 0.001 ) continue;
+			//for matched sites
+			paired2[k] = 1;
+			match2 = k;
+			break;
+			}
+		
+		//see if a match was found
+		if( (match1 == -1) || (match1 == -1) )
+			{
+			printf("no match found for site %d with values 1=%d and 2=%d\n", j, match1, match2);
+			}
+		else
+			{
+			//printf("do the business for j=%d\n", j);
+			for(l = 0; l < outframes[0].num_observables; l++)
+				{
+				for(k = 0; k < control->num_outfile; k++)
+					{
+					outframes[k].sites[j].observables[l] = control->charge[k] * (inframes[0].atoms[j].observables[l] - inframes[1].atoms[match1].observables[l] - inframes[2].atoms[match2].observables[l]);
+					}
+				}
+			}
+		}
+	//printf("cleanup process function\n");
+	free(paired1);
+	free(paired2);	
+}
+
+/////////////////////////////////////
+///   process_ii_charge_frames	 ///
+///////////////////////////////////
+
+void process_ii_charge_frames(Controller* control, Frame* inframe, Frame* outframe)
+{
+	//declare variables
+	int i, j;
+	int l = 0;
+	int type, type_spot;
+	double charge = 0.0;
+	int* paired = malloc(inframe->num_atoms * sizeof(int));
+	int match1 = -1;
+	for(i = 0; i < inframe->num_atoms; i++) paired[i] = 0;
+
+	//PREPARE INFRAME FORMAT
+	//printf("Prepare inframe format\n");
+	//determine type and type_num information missing by not doing in-house mapping
+	//allocate space
+	if(control->frame == 1)
+		{
+		inframe->type = malloc(control->num_cg_types * sizeof(int));
+		inframe->type_num = malloc(control->num_cg_types * sizeof(int));
+		outframe->type = malloc(control->num_cg_types * sizeof(int));
+		outframe->type_num = malloc(control->num_cg_types * sizeof(int));
+		}
+	//printf("initailize OR reset values\n");
+	for(i = 0; i< control->num_cg_types; i++)
+		{
+		//printf("initalize type %d\n", i);
+		inframe->type[i] = -1;
+		inframe->type_num[i] = 0;
+		}
+	inframe->type_count = 0;
+	
+	//printf("tabulate values\n");
+	for(i = 0; i< inframe->num_atoms; i++)
+		{
+		//FRAME 1
+		type = inframe->atoms[i].type;
+		type_spot = -1;
+		//check if this is new type (if not, increment counter)
+		for(j = 0; j <= inframe->type_count; j++)
+			{
+			if( inframe->type[j] == type)
+				{
+				inframe->type_num[j]++;
+				type_spot = j;
+				}
+			}
+		//handle new type
+		if(type_spot == -1)
+			{
+			inframe->type_count++;
+			inframe->type[inframe->type_count] = type;
+			inframe->type_num[inframe->type_count]++;
+			}
+		}	
+
+	//printf("populate outframes\n");
+	//populate general information in outframes
+	outframe->type_count = 0;
+	outframe->xmin = inframe->xmin;
+	outframe->xmax = inframe->xmax;
+	outframe->ymin = inframe->ymin;
+	outframe->ymax = inframe->ymax;
+	outframe->zmin = inframe->zmin;
+	outframe->zmax = inframe->zmax;
+	outframe->timestep = inframe->timestep;
+	outframe->num_observables = inframe->num_observables;	
+
+	//copy types
+	//printf("copy types\n");
+	for(j = 0; j< control->num_cg_types; j++)
+		{
+		outframe->type[j] = inframe->type[j];
+		outframe->type_num[j] = inframe->type_num[j];
+		}
+	//printf("allocate site space\n");
+	//allocate site space
+	if(outframe->num_atoms != control->num_cg_sites)
+		{
+		outframe->num_atoms = control->num_cg_sites;
+		outframe->sites = malloc(outframe->num_atoms * sizeof(SITE));		
+		for(i=0; i < outframe->num_atoms; i++)
+			{
+			outframe->sites[i].observables = malloc(outframe->num_observables * sizeof(double));
+			}
+		}
+	//printf("main atoms loops\n");
+	for(j = 0; j < outframe->num_atoms; j++)
+		{
+		outframe->sites[j].num_in_site = 1;
+		outframe->sites[j].id = inframe->atoms[j].id;
+		outframe->sites[j].mol = inframe->atoms[j].mol;
+		outframe->sites[j].type = inframe->atoms[j].type;
+		outframe->sites[j].mass = inframe->atoms[j].mass;
+		outframe->sites[j].q = inframe->atoms[j].q;
+		outframe->sites[j].x = inframe->atoms[j].x;
+		outframe->sites[j].y = inframe->atoms[j].y;
+		outframe->sites[j].z = inframe->atoms[j].z;
+		for(l = 0; l < outframe->num_observables; l++)
+			{
+			outframe->sites[j].observables[l] = 2.0 * control->charge[0] * inframe->atoms[j].observables[l];
+			}
+		}
+	free(paired);
+	//printf("end processing!\n");
 }
 
 /////////////////////////////////
