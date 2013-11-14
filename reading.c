@@ -6,6 +6,7 @@
 void parse_command_line_arguments(int, char**, char*, char*, char*);
 void read_topology_file(Controller*, char*);
 void read_frame(Controller*, Frame*, FILE*, int*);
+void read_frame_minimal(Controller*, Frame*, FILE*, int*);
 void read_frames_and_log(Controller*, Frame*, Frame*, FILE*, FILE*, FILE*, FILE*, int*);
 void read_charge_frames(Controller*, Frame*, int*);
 void read_charge_log(Controller*, int*);
@@ -316,15 +317,31 @@ void read_topology_file(Controller *control, char* topfile)
     	else printf("control->sign_flag = %d\n", control->sign_flag);
     	}
     	
-    else if(control->sensitivity_flag == 3)
+      if(control->sensitivity_flag == 1)
+    	{
+    	control->debug_flag = 0;
+    	
+    	fgets(line,100,fr);//blank line    	
+    	
+    	fgets(line,100,fr);//1st dump file
+    	sscanf(line, "%s", control->files.dump1);
+    	
+    	fgets(line,100,fr);//2nd dump file
+    	sscanf(line, "%s", control->files.dump2);
+   		}
+   		
+	 else if(control->sensitivity_flag == 2)
     	{
     	fgets(line,100,fr);//blank line
     	
-    	fgets(line, 100,fr);//1st dump file
-    	sscanf(line,"%s", control->files.guess); //name of tabulated output
+    	fgets(line, 100,fr);//charge
+    	sscanf(line,"%lf", &control->scaleU1);
+    	
+    	fgets(line, 100,fr);//mass
+    	sscanf(line,"%lf", &control->scaleU2);
     	}
-    
-    else if( (control->sensitivity_flag == 2) || (control->sensitivity_flag == 4) )
+        
+/*    else if( (control->sensitivity_flag == 2) || (control->sensitivity_flag == 4) )
     	{
 		//routine specific variables
 		char name[64];
@@ -381,7 +398,7 @@ void read_topology_file(Controller *control, char* topfile)
     		control->outfile[i] = fopen( name, "w+");
     		}	 	
     	}
-    	
+  */  	
     else if(control->sensitivity_flag == 5)
     	{
     	printf("control->sensitivity_flag = %d\n", control->sensitivity_flag);
@@ -671,6 +688,203 @@ void read_frame(Controller* control, Frame* frame, FILE* df, int* flag)
 			case 9:
 				sscanf(line, "%d %d %d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf", &frame->atoms[i].id, \
 				&frame->atoms[i].mol, &frame->atoms[i].type, &frame->atoms[i].q, &frame->atoms[i].mass, \ 
+				&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \ 
+				&frame->atoms[i].observables[1], &frame->atoms[i].observables[2], &frame->atoms[i].observables[3], \
+				&frame->atoms[i].observables[4], &frame->atoms[i].observables[5], &frame->atoms[i].observables[6], \
+				&frame->atoms[i].observables[7], &frame->atoms[i].observables[8]);
+				break;
+			
+			default:
+				printf("number of observables requested %d is not supported \n", frame->num_observables);
+				break;
+		}
+		//if( i < 10  && control->frame == 1) printf("read frame->atoms[%d].x = %lf\n", i, frame->atoms[i].x);
+		
+		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) frame->num_mol = frame->atoms[i].mol;
+		//printf("frame->atoms[%d].mol %d and frame->num_mol %d\n", i, frame->atoms[i].mol, frame->num_mol);
+
+	}
+	//finished reading frame
+}
+
+
+//////////////////////////////////
+///   read_frame_minimal	  ///
+/////////////////////////////////
+
+void read_frame_minimal(Controller* control, Frame* frame, FILE* df, int* flag)
+{
+	int i=0;
+	int j=0;
+	char line[100];
+	char test[15];
+	
+	//printf("control->num_observables is %d\n", control->num_observables);
+	//printf("frame->num_observables is %d\n", frame->num_observables);
+	frame->num_observables = control->num_observables;
+	
+	//printf("begin reading frame\n");
+	//check if EOF
+	if( fgets (line, 100, df) == NULL ) //1
+		{
+		*flag = 0;
+		printf("end of file reached in read_frame\n");
+		eof_exit(control, frame);
+		printf("finished eof_exit\n");
+		return;
+		}
+	
+	//check if content matches expected 1st line of frame
+	memcpy( test, &line[0], 14);
+	test[14] = '\0';
+	if( strcmp(test, "ITEM: TIMESTEP") != 0)
+		{
+			printf("error in frame format\n");
+			printf("line found was %s\n", test);
+			printf("expected line is ITEM: TIMESTEP\n");
+			*flag = 0;
+			eof_exit(control, frame);
+			return;
+		}
+	
+	//printf("passed EOF and format test\n");
+	//so, we assume content is correct now for next frame and begin reading
+	//read in timestep
+	fgets(line,100,df); //2
+    sscanf(line, "%d", &frame->timestep);
+    
+    //read in number of atoms
+    fgets(line,100,df); //3 
+	fgets(line,100,df); //4
+    sscanf(line, "%d", &i);
+    
+    printf("timestep is %d\n", frame->timestep);
+    //printf("number of atoms is %d\n", i);
+    
+    //check if num_atoms changed
+    if(i != frame->num_atoms)
+    	{
+    	if(frame->num_atoms == 0)	//do initial allocation
+    		{
+    		//printf("intial allocation of atoms \n");
+    		if(i != control->num_fg_sites) 
+    			{
+    				if(control->sens_map_flag == 1) 
+    					{
+    					if(i != control->num_cg_sites) printf("num cg sites = %d does not match num atoms %d\n", control->num_cg_sites, i);
+    					}
+    				else
+    					{
+    					printf("num fg sites = %d does not match num atoms %d\n", control->num_fg_sites, i);
+    					}
+    			}
+    		frame->num_atoms = i;
+			frame->atoms = malloc(frame->num_atoms * sizeof(ATOM));
+			frame->num_observables = control->num_observables;
+			for(j = 0; j < frame->num_atoms; j++) frame->atoms[j].mol = 0;
+			//printf("set frame->num_observables to %d\n", frame->num_observables);
+			}
+		else //number of atoms has changed
+			{
+			printf("number of atoms has  changed");
+			//free all existing data for atoms
+			for(j = 0; j < frame->num_atoms; j++)
+				{
+				free(frame->atoms[j].observables);	
+				}
+			free(frame->atoms);
+			
+			//reallocate atoms space
+			frame->num_atoms = i;
+			frame->atoms = malloc(frame->num_atoms * sizeof(ATOM));
+			frame->num_mol = 0;
+			for(j = 0; j < frame->num_atoms; j++) frame->atoms[j].mol = 0;
+			}
+			
+		//allocate observable information
+		for(i=0; i < frame->num_atoms; i++)
+			{
+			frame->atoms[i].observables = malloc(frame->num_observables * sizeof(double));
+			}
+		printf("observable space allocated\n");
+		}
+	
+	//read in box information
+	fgets(line,100,df); //5
+	fgets(line,100,df); //6
+    sscanf(line, "%lf %lf", &frame->xmin, &frame->xmax);
+	fgets(line,100,df); //7
+    sscanf(line, "%lf %lf", &frame->ymin, &frame->ymax);
+	fgets(line,100,df); //8
+    sscanf(line, "%lf %lf", &frame->zmin, &frame->zmax);
+
+    //read in atoms and observables for frame
+	fgets(line,100,df);
+	for(i=0; i < frame->num_atoms; i++)
+		{
+		fgets(line,100,df);
+		//determine reading based on how many arguements were supplied (expected number is frame->num_obserables + 8)
+		switch(frame->num_observables)
+		{
+			case 0:
+    			sscanf(line, "%lf %lf %lf", \
+    			&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z);
+				break;
+			
+			case 1:
+				sscanf(line, "%lf %lf %lf %lf", \
+				&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0]);
+				break;
+			case 2:
+				sscanf(line, "%lf %lf %lf %lf %lf", \ 
+				&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \
+				&frame->atoms[i].observables[1]);
+				break;
+				
+			case 3:
+				sscanf(line, "%lf %lf %lf %lf %lf %lf", \
+				&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \ 
+				&frame->atoms[i].observables[1], &frame->atoms[i].observables[2]);
+				break;
+				
+			case 4:
+				sscanf(line, "%lf %lf %lf %lf %lf %lf %lf", \
+				&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \ 
+				&frame->atoms[i].observables[1], &frame->atoms[i].observables[2], &frame->atoms[i].observables[3]);
+				break;
+				
+			case 5:
+				sscanf(line, "%lf %lf %lf %lf %lf %lf %lf %lf", \
+				&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \ 
+				&frame->atoms[i].observables[1], &frame->atoms[i].observables[2], &frame->atoms[i].observables[3], \
+				&frame->atoms[i].observables[4]);
+				break;
+				
+			case 6:
+				sscanf(line, "%lf %lf %lf %lf %lf %lf %lf %lf %lf", \
+				&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \ 
+				&frame->atoms[i].observables[1], &frame->atoms[i].observables[2], &frame->atoms[i].observables[3], \
+				&frame->atoms[i].observables[4], &frame->atoms[i].observables[5]);
+				break;
+			
+			case 7:
+				sscanf(line, "%d %d %d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf", &frame->atoms[i].id, \
+				&frame->atoms[i].mol, &frame->atoms[i].type, &frame->atoms[i].q, &frame->atoms[i].mass, \ 
+				&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \ 
+				&frame->atoms[i].observables[1], &frame->atoms[i].observables[2], &frame->atoms[i].observables[3], \
+				&frame->atoms[i].observables[4], &frame->atoms[i].observables[5], &frame->atoms[i].observables[6]);
+				break;
+			
+			case 8:
+				sscanf(line, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf", \
+				&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \ 
+				&frame->atoms[i].observables[1], &frame->atoms[i].observables[2], &frame->atoms[i].observables[3], \
+				&frame->atoms[i].observables[4], &frame->atoms[i].observables[5], &frame->atoms[i].observables[6], \
+				&frame->atoms[i].observables[7]);
+				break;
+				
+			case 9:
+				sscanf(line, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf", \
 				&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \ 
 				&frame->atoms[i].observables[1], &frame->atoms[i].observables[2], &frame->atoms[i].observables[3], \
 				&frame->atoms[i].observables[4], &frame->atoms[i].observables[5], &frame->atoms[i].observables[6], \

@@ -4,6 +4,7 @@
 
 //original functions
 void process_frame(Controller*, Frame*, Frame*);
+void process_minimal_frames(Controller*, Frame*, Frame*);
 void process_frames_and_log(Controller*, Frame*, Frame*, Frame*);
 void process_no_map_frames_and_log(Controller*, Frame*, Frame*, Frame*);
 void map_all_atoms(Controller*, Frame*, Frame*); 
@@ -127,6 +128,75 @@ void process_frame(Controller* control, Frame* inframe, Frame* outframe)
 	//printf("proces_frames: outframe->sites[1].x = %lf\n", outframe->sites[1].x);
 }
 
+//////////////////////////////////
+///   process_minimal_frame	  ///
+////////////////////////////////
+
+void process_minimal_frame(Controller* control, Frame* inframe, Frame* outframe)
+{
+	//declare variables
+	int i, j;
+	int l = 0;
+	int type, type_spot;
+	
+	//PREPARE INFRAME FORMAT
+	//printf("Prepare inframe format\n");
+	//determine type and type_num information missing by not doing in-house mapping
+	//allocate space
+	if(control->frame == 1)
+		{
+		//inframe->type = malloc(control->num_cg_types * sizeof(int));
+		//inframe->type_num = malloc(control->num_cg_types * sizeof(int));
+		outframe->type = malloc(control->num_cg_types * sizeof(int));
+		outframe->type_num = malloc(control->num_cg_types * sizeof(int));
+		}
+
+	//printf("populate outframes\n");
+	//populate general information in outframes
+	outframe->type_count = 0;
+	outframe->xmin = inframe->xmin;
+	outframe->xmax = inframe->xmax;
+	outframe->ymin = inframe->ymin;
+	outframe->ymax = inframe->ymax;
+	outframe->zmin = inframe->zmin;
+	outframe->zmax = inframe->zmax;
+	outframe->timestep = inframe->timestep;
+	outframe->num_observables = inframe->num_observables;	
+
+	//copy types
+	//printf("copy types\n");
+	outframe->type[0] = 1;
+	outframe->type_num[0] = inframe->num_atoms;
+	
+	//printf("allocate site space\n");
+	//allocate site space
+	if(outframe->num_atoms != control->num_cg_sites)
+		{
+		outframe->num_atoms = control->num_cg_sites;
+		outframe->sites = malloc(outframe->num_atoms * sizeof(SITE));		
+		for(i=0; i < outframe->num_atoms; i++)
+			{
+			outframe->sites[i].observables = malloc(outframe->num_observables * sizeof(double));
+			}
+		}
+	//printf("main atoms loops\n");
+	for(j = 0; j < outframe->num_atoms; j++)
+		{
+		outframe->sites[j].num_in_site = 1;
+		outframe->sites[j].id = j;
+		outframe->sites[j].mol = j;
+		outframe->sites[j].type = 1;
+		outframe->sites[j].mass = control->scaleU2;
+		outframe->sites[j].q = control->scaleU1;
+		outframe->sites[j].x = inframe->atoms[j].x;
+		outframe->sites[j].y = inframe->atoms[j].y;
+		outframe->sites[j].z = inframe->atoms[j].z;
+		for(l = 0; l < outframe->num_observables; l++)
+			{
+			outframe->sites[j].observables[l] = inframe->atoms[j].observables[l];
+			}
+		}
+}
 /////////////////////////////////
 ///   process_frames_and_log  ///
 /////////////////////////////////
