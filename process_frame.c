@@ -12,6 +12,7 @@ void map_some_atoms(Controller*, Frame*, Frame*);
 //sensitivity functions
 void combine_sensitivity_data(Controller*, Frame*, Frame*, Frame*);
 void combine_cg_sensitivity_data(Controller*, Frame*, Frame*, Frame*);
+void process_frame_order(Controller*, Frame*, Frame*);
 void process_charge_frames(Controller*, Frame*, Frame*);
 void process_ij_charge_frames(Controller*, Frame*, Frame*);
 void process_ii_charge_frames(Controller*, Frame*, Frame*);
@@ -670,6 +671,192 @@ void combine_cg_sensitivity_data(Controller* control, Frame* inframe1, Frame* in
 				//printf("pair matched for i = %d j = %d k = %d\n", i, j, k);
 				}
 			break;
+			}
+		}
+}
+
+/////////////////////////////////
+///   process_frame_order	 ///
+////////////////////////////////
+
+void process_frame_order(Controller* control, Frame* inframe, Frame* outframe)
+{
+	int i, j, l, id, spot, prev;
+	int type, type_spot;
+		
+	printf("processing frame at step %d and control->num_cg_types is %d\n", control->frame, control->num_cg_types);	
+	if(control->frame == 1)
+		{
+		//printf("allocate types\n");
+		outframe->type = malloc(control->num_cg_types * sizeof(int));
+		outframe->type_num = malloc(control->num_cg_types * sizeof(int));
+		inframe->type = malloc(control->num_cg_types * sizeof(int));
+		inframe->type_num = malloc(control->num_cg_types * sizeof(int));
+		control->order = malloc(control->num_cg_types * sizeof(int));
+		
+		inframe->type_list = malloc(control->num_cg_types * sizeof(int*));
+		for(i = 0; i < control->num_cg_types; i++)
+			{
+			inframe->type_list[i] = malloc( inframe->num_atoms * sizeof(int) );
+			}
+		}
+	
+	//intitalize type array
+	//printf("initalize type array\n");
+	outframe->type_count = 0;
+	inframe->type_count = 0;
+	for(i = 0; i < control->num_cg_types; i++)
+		{
+		outframe->type[i] = -1;
+		outframe->type_num[i] = 0;
+		inframe->type[i] = -1;
+		inframe->type_num[i] = 0;
+		}
+		
+	//determine if we need to allocate sites
+	//printf("do we need to allocate sites?\n");
+	if(control->num_cg_sites != outframe->num_atoms) //assumes unitialized (0) although flexibility could be added to change number of sites (e.g. Grand Canonical Ensemble)
+		{
+		printf("allocate sites for outframe to size %d\n", control->num_cg_sites);
+		outframe->num_atoms = control->num_cg_sites;
+		outframe->sites = malloc(outframe->num_atoms * sizeof(SITE));
+		
+		//also need to allocate observables
+		for(i=0; i < outframe->num_atoms; i++)
+			{
+			outframe->sites[i].observables = malloc(outframe->num_observables * sizeof(double));
+			outframe->sites[i].coord = malloc(control->max_to_map *sizeof(COORD));
+			outframe->sites[i].matches = malloc(control->num_cg_types * sizeof(int));
+			}
+		printf("observables and coord space allocated\n");
+		}
+
+	//reset frame info
+	for(i = 0; i < outframe->num_atoms; i++)
+		{
+		outframe->sites[i].q = 0.0;
+		outframe->sites[i].num_in_site = 0;
+		outframe->sites[i].type = -1;	
+		
+		for(j = 0; j < outframe->num_observables; j++)
+			{
+			outframe->sites[i].observables[j] = 0.0;
+			}
+		
+		for(j = 0; j < control->max_to_map; j++)
+			{
+			outframe->sites[i].coord[j].x = 0.0;
+			outframe->sites[i].coord[j].y = 0.0;
+			outframe->sites[i].coord[j].z = 0.0;
+			}
+			
+		for(j = 0; j < control->num_cg_types; j++)
+			{
+			outframe->sites[i].matches[j] = 1;
+			}
+		}
+	
+	//SORT ATOM_ID BY TYPE INTO TYPE_LIST BINS
+	//printf("\nsort atom id\n");
+	for(i = 0; i < inframe->num_atoms; i++)
+		{
+		//look-up type
+		//printf("loop %d look-up type\n", i);
+		type = inframe->atoms[i].type;
+		type_spot = -1;
+		//printf("looking at type %d for atom %d\n", type, i);
+		for(j = 0; j < inframe->type_count; j++)
+			{
+			if( inframe->type[j] == type)
+				{
+				//printf("found match for type %d at spot %d\n", type, j);
+				inframe->type_num[j]++;
+				type_spot = j;
+				}
+			}
+		//handle new type
+		if(type_spot == -1)
+			{
+			//printf("handling new type %d # %d for atom %d\n", type, inframe->type_count, i);
+			type_spot = inframe->type_count;
+			inframe->type[inframe->type_count] = type;
+			inframe->type_num[inframe->type_count] = 1;
+			inframe->type_count++;
+			}
+		//catalog type into type_list array
+		//printf("catalog inframe->type_num[ %d ] = %d as %d\n", type_spot, inframe->type_num[type_spot]-1, i);
+		inframe->type_list[ type_spot ][ inframe->type_num[type_spot] - 1] = i;
+		}
+	
+	printf("get output order\n");
+	//GET ORDER FOR OUTPUT
+	prev = -1;
+	for(i = 0; i < control->num_cg_types; i++)
+		{
+		type = control->num_cg_types;
+		for(j = 0; j < control->num_cg_types; j++)
+			{
+			if( (inframe->type[j] < type) && (inframe->type[j] > prev) )
+				{
+				type = j;
+				}
+			}
+		control->order[i] = type;
+		prev = type;
+		//printf("order # %d = type %d\n", i, type);
+		}
+	
+	
+	//CREATE OUTPUT
+	//printf("create output\n");
+	//copy basic information from inframe to outframe
+	outframe->xmin = inframe->xmin;
+	outframe->xmax = inframe->xmax;
+	outframe->ymin = inframe->ymin;
+	outframe->ymax = inframe->ymax;
+	outframe->zmin = inframe->zmin;
+	outframe->zmax = inframe->zmax;
+	outframe->timestep = inframe->timestep;
+	outframe->num_observables = inframe->num_observables;
+	
+	spot = 0;
+	for(i = 0; i < control->num_cg_types; i++)
+		{
+		//copy type info in order it is placed in frame
+		prev = -1;
+		for(j = 0; j < control->num_cg_types; j++)
+			{
+			//get type index
+			//printf("compare order[%d] = %d vs type[%d] = %d\n", i, control->order[i], j, inframe->type[j]);
+			if( inframe->type[j] == control->order[i] )
+				{
+				prev = j;
+				break;
+				}
+			}
+		//printf("to copy type %d with %d entries\n", prev, inframe->type_num[prev]);
+		outframe->type[i] = inframe->type[ prev ];
+		outframe->type[i] = inframe->type_num[ prev ];
+		
+		//copy frame info for all entries of this type
+		for(j = 0; j < inframe->type_num[ prev ]; j++)
+			{
+			id = inframe->type_list[ prev ][j];
+			//printf("id %d = inframe->type_list[ %d ][ %d ] for spot %d\n", id, prev, j, spot);
+			outframe->sites[spot].num_in_site = 1;
+			outframe->sites[spot].id = inframe->atoms[id].id;
+			outframe->sites[spot].mol = inframe->atoms[id].mol;
+			outframe->sites[spot].type = inframe->atoms[id].type;
+			outframe->sites[spot].mass = inframe->atoms[id].mass;
+			outframe->sites[spot].q = inframe->atoms[id].q;
+			outframe->sites[spot].x = inframe->atoms[id].x;
+			outframe->sites[spot].y = inframe->atoms[id].y;
+			outframe->sites[spot].z = inframe->atoms[id].z;
+			for(l = 0; l < outframe->num_observables; l++)
+				{
+				outframe->sites[spot].observables[l] = inframe->atoms[id].observables[l];
+				}
+			spot++;
 			}
 		}
 }

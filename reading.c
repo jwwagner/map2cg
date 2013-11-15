@@ -317,7 +317,7 @@ void read_topology_file(Controller *control, char* topfile)
     	else printf("control->sign_flag = %d\n", control->sign_flag);
     	}
     	
-      if(control->sensitivity_flag == 1)
+    if(control->sensitivity_flag == 1)
     	{
     	control->debug_flag = 0;
     	
@@ -329,7 +329,7 @@ void read_topology_file(Controller *control, char* topfile)
     	fgets(line,100,fr);//2nd dump file
     	sscanf(line, "%s", control->files.dump2);
    		}
-   		
+   	
 	 else if(control->sensitivity_flag == 2)
     	{
     	fgets(line,100,fr);//blank line
@@ -341,64 +341,16 @@ void read_topology_file(Controller *control, char* topfile)
     	sscanf(line,"%lf", &control->scaleU2);
     	}
         
-/*    else if( (control->sensitivity_flag == 2) || (control->sensitivity_flag == 4) )
+	else if(control->sensitivity_flag == 3)
     	{
-		//routine specific variables
-		char name[64];
-		double* temp;
-	    
-	    
     	fgets(line,100,fr);//blank line
     	
-    	fgets(line, 100,fr);//number of charges
-    	sscanf(line,"%d", &control->num_charges);
-    	
-    	for(i = 1; i <= control->num_charges; i++) control->num_files += i;
-    	printf("num_charges is %d and num_files %d \n", control->num_charges, control->num_files); //, (int) round( control->num_charges * ( (double) control->num_files * 0.5 + 0.5) ) );
-    	
-    	//read in charge values
-    	temp = malloc( control->num_charges * sizeof(double) );
-    	control->charge = malloc( control->num_charges * sizeof(double) );
-    	for(i = 0; i < control->num_charges; i++) 
-    		{
-    		temp[i] = 0.0;
-    		control->charge[i] = temp[i];
-    		}
-    	fgets(line, 100,fr);
-    	read_number_in_line_float(control->num_charges, line, temp);
-    	for(i = 0; i < control->num_charges; i++) 
-    		{
-    		control->charge[i] = temp[i]; 
-    		printf("numbers read are %lf = %lf\n", temp[i], control->charge[i] );
-    		}
-    	free(temp);
-
-    	control->file_point = malloc( control->num_files * sizeof(FILE*) );
-    	//read in the necessary number of filenames
-    	printf("number of files expected is %d\n", control->num_files);
-    	for(i = 0; i < control->num_files; i++)
-    		{
-    		fgets(line, 100,fr);
-    		sscanf(line,"%s", name);
-    		control->file_point[i] = fopen(name, "rt");
-    		}
-    		
-    	//read # output files (as separator)
-    	i=0;
-    	fgets(line, 100, fr);
-    	sscanf(line,"%d", &i);
-    	if(i != control->num_files) printf("ERROR: number of CHARGES does not agree with number of OUTPUT files (given: %d vs expected: %d)\n", i, control->num_files);
-    	
-    	//allocate space for output file pointers and read in (and open files)
-    	control->outfile = malloc( control->num_files * sizeof(FILE*) );
-    	for(i = 0; i < control->num_files; i++)
-    		{
-    		fgets(line, 100, fr);
-    		sscanf(line, "%s", name);
-    		control->outfile[i] = fopen( name, "w+");
-    		}	 	
+    	fgets(line, 100,fr);//1st dump file
+    	sscanf(line,"%s", control->files.guess); //name of tabulated output
     	}
-  */  	
+	
+	//no parameters need for control->sensitivity_flag == 4  	
+    
     else if(control->sensitivity_flag == 5)
     	{
     	printf("control->sensitivity_flag = %d\n", control->sensitivity_flag);
@@ -498,7 +450,6 @@ void read_topology_file(Controller *control, char* topfile)
 	fclose(fr);
     printf("finished reading top file\n\n");
 }
-
 
 //////////////////////////
 ///   read_frame	  ///
@@ -706,7 +657,6 @@ void read_frame(Controller* control, Frame* frame, FILE* df, int* flag)
 	}
 	//finished reading frame
 }
-
 
 //////////////////////////////////
 ///   read_frame_minimal	  ///
@@ -964,6 +914,7 @@ void read_frames_and_log(Controller* control, Frame* inframe1, Frame* inframe2, 
   ////////////////////////////////
  //   read_charge_frames	  ///
 ////////////////////////////////
+
 void read_charge_frames(Controller* control, Frame* inframes, int* flag)
 {
 	//declare variables
@@ -1085,7 +1036,6 @@ void read_bootstrapping_file(Controller* control, int* frame_order, int* count)
 	fclose(fp);
 	//printf("file closed\n");
 }
-
 
   ////////////////////////
  //   read_logfile	  ///
@@ -1238,7 +1188,6 @@ void read_guess(Controller* control, FILE* gf, int* flag)
 ///   read_force_file	  ///
 ////////////////////////////
 
-
 void read_force_file(Controller* control, char* file, double* distance, double* force,  int* number_of_lines)
 {
 	//declare variables
@@ -1292,7 +1241,6 @@ void read_force_file(Controller* control, char* file, double* distance, double* 
 //////////////////////////////////
 ///   read_number_in_line	  ///
 ////////////////////////////////
-
 
 void read_number_in_line(int num_vals, char* line, int* vals)
 {

@@ -55,6 +55,8 @@ typedef struct
 	FILE** file_point;
 	FILE** outfile;
 	char* name;
+	
+	int* order;
 } Controller;
 
 typedef struct
@@ -91,6 +93,7 @@ typedef struct
 	SITE* sites;
 	int* type;
 	int* type_num;
+	int** type_list;
 	int type_count;
 	
 } Frame;
