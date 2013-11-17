@@ -11,28 +11,47 @@ void output_frame_second3(Controller*, Frame*, char*);
 void output_topology(Controller*, Frame*);
 void output_force_file(Controller*, int, double*, double*, double*, char*);
 void output_charge_frames(Controller*, Frame*);
-void output_charge_log(Controller*);
 void create_and_output_bootstrapping_file(Controller*, Frame*, int*, int*);
-
+//pointer output functions
+void out0full(Frame*, FILE*);
+void out1full(Frame*, FILE*);
+void out2full(Frame*, FILE*);
+void out3full(Frame*, FILE*);
+void out4full(Frame*, FILE*);
+void out5full(Frame*, FILE*);
+void out6full(Frame*, FILE*);
+void out7full(Frame*, FILE*);
+void out8full(Frame*, FILE*);
+void out9full(Frame*, FILE*);
+void default_func(FILE* of);
+void header0(FILE*);
+void header1(FILE*);
+void header3(FILE*);
+void header4(FILE*);
+void header6(FILE*);
+void header7(FILE*);
+void header0full(FILE*);
+void header1full(FILE*);
+void header3full(FILE*);
+void header4full(FILE*);
+void header6full(FILE*);
+void header7full(FILE*);
+void generic_frame_header(Frame*, FILE*);
 //////////////////////////
 ///   output_frame	  ///
 /////////////////////////
 void output_frame(Controller* control, Frame* outframe, char* outfile)
 {
-
 	switch(control->output_flag)
 		{
 		case 1:
 			output_frame_minimal(control, outframe, outfile);
 			break;
-		
 		case 2:
 			output_frame_4(control, outframe, outfile);
 			break;
-			
 		case 3:
 			output_frame_second3(control, outframe, outfile);
-			
 		default:
 		case 0:
 			output_frame_all(control, outframe, outfile);
@@ -47,138 +66,20 @@ void output_frame(Controller* control, Frame* outframe, char* outfile)
 void output_frame_all(Controller* control, Frame* outframe, char* outfile)
 {
 	int i, j;
-	FILE* of = fopen(outfile, "a+");
-	
-	//output frame header
-	fprintf(of, "ITEM: TIMESTEP\n");
-	fprintf(of, "%d\n", outframe->timestep);
-	fprintf(of, "ITEM: NUMBER OF ATOMS\n");
-	fprintf(of, "%d\n", outframe->num_atoms); //could also consider using outframe->num_mol
-	fprintf(of, "ITEM: BOX BOUNDS pp pp pp\n");
-	fprintf(of, "%lf %lf\n%lf %lf\n%lf %lf\n", outframe->xmin, outframe->xmax, outframe->ymin, outframe->ymax, outframe->zmin, outframe->zmax);
-
-	switch(outframe->num_observables)
-		{	
-		case 0:
-			fprintf(of, "ITEM: ATOMS id mol type q mass x y z \n");
-			break;
-		
-		case 1:
-			fprintf(of, "ITEM: ATOMS id mol type q mass x y z U \n");
-			break;
-			
-		case 3:
-			fprintf(of, "ITEM: ATOMS id mol type q mass x y z fx fy fz \n");
-			break;
-		
-		case 4:
-			fprintf(of, "ITEM: ATOMS id mol type q mass x y z dfx dfy dfz dU \n");
-			break;
-			
-		case 6:
-			fprintf(of, "ITEM: ATOMS id mol type q mass x y z fx fy fz dfx dfy dfz \n");
-			break;
-			
-		case 7:
-			fprintf(of, "ITEM: ATOMS id mol type q mass x y z fx fy fz dfx dfy dfz dU \n");
-			break;
-			
-		default:
-			printf("output number of observables not supported so giving generic 3 observable header\n");
-			fprintf(of, "ITEM: ATOMS id mol type q mass x y z fx fy fz dfx dfy dfz dU \n");
-			//for(i = 0; i < outframe->num_atoms; i++)
-		}
-		
-	for( i = 0; i < outframe->num_atoms; i++)
+	if(outframe->sites[0].type == -1)
 		{
-		switch(outframe->num_observables)
-			{
-			case 0:
-				fprintf(of, "%d %d %d %lf %lf %lf %lf %lf\n", outframe->sites[i].id, outframe->sites[i].mol, \
-				outframe->sites[i].type, outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
-				outframe->sites[i].y, outframe->sites[i].z);
-				break;
-			
-			case 1:
-				fprintf(of, "%d %d %d %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, outframe->sites[i].mol, \
-				outframe->sites[i].type, outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
-				outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0]);
-				break;
-				
-			case 2:
-				fprintf(of, "%d %d %d %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, outframe->sites[i].mol, \
-				outframe->sites[i].type, outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
-				outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
-				outframe->sites[i].observables[1]);
-				break;
-
-			case 3:
-				fprintf(of, "%d %d %d %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, outframe->sites[i].mol, \
-				outframe->sites[i].type, outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
-				outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
-				outframe->sites[i].observables[1], outframe->sites[i].observables[2]);
-				break;
-				
-			case 4:
-				fprintf(of, "%d %d %d %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, outframe->sites[i].mol, \
-				outframe->sites[i].type, outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
-				outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
-				outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
-				outframe->sites[i].observables[3]);
-				break;
-			
-			case 5:
-				fprintf(of, "%d %d %d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, outframe->sites[i].mol, \
-				outframe->sites[i].type, outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
-				outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
-				outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
-				outframe->sites[i].observables[3], outframe->sites[i].observables[4]);
-				break;
-				
-			case 6:
-				fprintf(of, "%d %d %d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, outframe->sites[i].mol, \
-				outframe->sites[i].type, outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
-				outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
-				outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
-				outframe->sites[i].observables[3], outframe->sites[i].observables[4], \
-				outframe->sites[i].observables[5]);
-				break;
-				
-			case 7:
-				fprintf(of, "%d %d %d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, outframe->sites[i].mol, \
-				outframe->sites[i].type, outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
-				outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
-				outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
-				outframe->sites[i].observables[3], outframe->sites[i].observables[4], \
-				outframe->sites[i].observables[5], outframe->sites[i].observables[6]);
-				break;
-				
-			case 8:
-				fprintf(of, "%d %d %d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, outframe->sites[i].mol, \
-				outframe->sites[i].type, outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
-				outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
-				outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
-				outframe->sites[i].observables[3], outframe->sites[i].observables[4], \
-				outframe->sites[i].observables[5], outframe->sites[i].observables[6], \
-				outframe->sites[i].observables[7]);
-				break;
-				
-			case 9:
-				fprintf(of, "%d %d %d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, outframe->sites[i].mol, \
-				outframe->sites[i].type, outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
-				outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
-				outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
-				outframe->sites[i].observables[3], outframe->sites[i].observables[4], \
-				outframe->sites[i].observables[5], outframe->sites[i].observables[6], \
-				outframe->sites[i].observables[7], outframe->sites[i].observables[8]);
-				break;
-			
-			default:
-				printf("number of observables to output is not supported in file writing\n");
-				break;
+		for( i = 0; i < outframe->num_atoms; i++)
+			{	
+			printf("%d %d %d %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, outframe->sites[i].mol, \
+			outframe->sites[i].type, outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
+			outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+			outframe->sites[i].observables[1], outframe->sites[i].observables[2]);
 			}
 		}
-		
+	FILE* of = fopen(outfile, "a+");
+	generic_frame_header(outframe, of); 	//output frame header
+	(*control->header_function)(of);
+	(*control->output_function)(outframe, of);
 	fclose(of);
 }
 
@@ -191,45 +92,8 @@ void output_frame_minimal(Controller* control, Frame* outframe, char* outfile)
 	int i, j;
 	FILE* of = fopen(outfile, "a+");
 	
-	//output frame header
-	fprintf(of, "ITEM: TIMESTEP\n");
-	fprintf(of, "%d\n", outframe->timestep);
-	fprintf(of, "ITEM: NUMBER OF ATOMS\n");
-	fprintf(of, "%d\n", outframe->num_atoms); //could also consider using outframe->num_mol
-	fprintf(of, "ITEM: BOX BOUNDS pp pp pp\n");
-	fprintf(of, "%lf %lf\n%lf %lf\n%lf %lf\n", outframe->xmin, outframe->xmax, outframe->ymin, outframe->ymax, outframe->zmin, outframe->zmax);
-
-	switch(outframe->num_observables)
-		{	
-		case 0:
-			fprintf(of, "ITEM: ATOMS x y z \n");
-			break;
-		
-		case 1:
-			fprintf(of, "ITEM: ATOMS x y z U \n");
-			break;
-			
-		case 3:
-			fprintf(of, "ITEM: ATOMS x y z fx fy fz \n");
-			break;
-		
-		case 4:
-			fprintf(of, "ITEM: ATOMS x y z dfx dfy dfz dU \n");
-			break;
-			
-		case 6:
-			fprintf(of, "ITEM: ATOMS x y z fx fy fz dfx dfy dfz \n");
-			break;
-			
-		case 7:
-			fprintf(of, "ITEM: ATOMS x y z fx fy fz dfx dfy dfz dU \n");
-			break;
-			
-		default:
-			printf("output number of observables not supported so giving generic 3 observable header\n");
-			fprintf(of, "ITEM: ATOMS x y z fx fy fz\n");
-			//for(i = 0; i < outframe->num_atoms; i++)
-		}
+	generic_frame_header(outframe, of); 	//output frame header
+	(*control->header_function)(of);
 		
 	for( i = 0; i < outframe->num_atoms; i++)
 		{
@@ -310,7 +174,6 @@ void output_frame_minimal(Controller* control, Frame* outframe, char* outfile)
 				break;
 			}
 		}
-		
 	fclose(of);
 }
 
@@ -321,130 +184,9 @@ void output_frame_minimal(Controller* control, Frame* outframe, char* outfile)
 void output_frame_minimal_charge(Controller* control, Frame* outframe, FILE* of)
 {
 	int i, j;
-
-	//output frame header
-	fprintf(of, "ITEM: TIMESTEP\n");
-	fprintf(of, "%d\n", outframe->timestep);
-	fprintf(of, "ITEM: NUMBER OF ATOMS\n");
-	fprintf(of, "%d\n", outframe->num_atoms); //could also consider using outframe->num_mol
-	fprintf(of, "ITEM: BOX BOUNDS pp pp pp\n");
-	fprintf(of, "%lf %lf\n%lf %lf\n%lf %lf\n", outframe->xmin, outframe->xmax, outframe->ymin, outframe->ymax, outframe->zmin, outframe->zmax);
-
-	//printf("finished header\n");
-	
-	switch(outframe->num_observables)
-		{	
-		case 0:
-			fprintf(of, "ITEM: ATOMS x y z \n");
-			break;
-		
-		case 1:
-			fprintf(of, "ITEM: ATOMS x y z U \n");
-			break;
-			
-		case 3:
-			fprintf(of, "ITEM: ATOMS x y z fx fy fz \n");
-			break;
-		
-		case 4:
-			fprintf(of, "ITEM: ATOMS x y z dfx dfy dfz dU \n");
-			break;
-			
-		case 6:
-			fprintf(of, "ITEM: ATOMS x y z fx fy fz dfx dfy dfz \n");
-			break;
-			
-		case 7:
-			fprintf(of, "ITEM: ATOMS x y z fx fy fz dfx dfy dfz dU \n");
-			break;
-			
-		default:
-			printf("output number of observables not supported so giving generic 3 observable header\n");
-			fprintf(of, "ITEM: ATOMS x y z fx fy fz\n");
-			//for(i = 0; i < outframe->num_atoms; i++)
-		}
-		
-	//printf("writing data\n");
-	//printf("num_observables is %d\n", outframe->num_observables);
-	for( i = 0; i < outframe->num_atoms; i++)
-		{
-		switch(outframe->num_observables)
-			{
-			case 0:
-				fprintf(of, "%lf %lf %lf\n", outframe->sites[i].x, \
-				outframe->sites[i].y, outframe->sites[i].z);
-				break;
-			
-			case 1:
-				fprintf(of, "%lf %lf %lf %lf\n", outframe->sites[i].x, \
-				outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0]);
-				break;
-				
-			case 2:
-				fprintf(of, "%lf %lf %lf %lf %lf\n", outframe->sites[i].x, \
-				outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
-				outframe->sites[i].observables[1]);
-				break;
-
-			case 3:
-				fprintf(of, "%lf %lf %lf %lf %lf %lf\n", outframe->sites[i].x, \
-				outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
-				outframe->sites[i].observables[1], outframe->sites[i].observables[2]);
-				break;
-				
-			case 4:
-				fprintf(of, "%lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].x, \
-				outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
-				outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
-				outframe->sites[i].observables[3]);
-				break;
-			
-			case 5:
-				fprintf(of, "%lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].x, \
-				outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
-				outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
-				outframe->sites[i].observables[3], outframe->sites[i].observables[4]);
-				break;
-				
-			case 6:
-				fprintf(of, "%lf %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].x, \
-				outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
-				outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
-				outframe->sites[i].observables[3], outframe->sites[i].observables[4], \
-				outframe->sites[i].observables[5]);
-				break;
-				
-			case 7:
-				fprintf(of, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].x, \
-				outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
-				outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
-				outframe->sites[i].observables[3], outframe->sites[i].observables[4], \
-				outframe->sites[i].observables[5], outframe->sites[i].observables[6]);
-				break;
-				
-			case 8:
-				fprintf(of, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].x, \
-				outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
-				outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
-				outframe->sites[i].observables[3], outframe->sites[i].observables[4], \
-				outframe->sites[i].observables[5], outframe->sites[i].observables[6], \
-				outframe->sites[i].observables[7]);
-				break;
-				
-			case 9:
-				fprintf(of, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].x, \
-				outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
-				outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
-				outframe->sites[i].observables[3], outframe->sites[i].observables[4], \
-				outframe->sites[i].observables[5], outframe->sites[i].observables[6], \
-				outframe->sites[i].observables[7], outframe->sites[i].observables[8]);
-				break;
-			
-			default:
-				printf("number of observables to output is not supported in file writing\n");
-				break;
-			}
-		}
+	generic_frame_header(outframe, of);	//output frame header
+	(*control->header_function)(of);		
+	(*control->output_function)(outframe, of);
 }
 
 /////////////////////////////
@@ -455,23 +197,9 @@ void output_frame_4(Controller* control, Frame* outframe, char* outfile)
 {
 	int i, j;
 	FILE* of = fopen(outfile, "a+");
-	
-	//output frame header
-	fprintf(of, "ITEM: TIMESTEP\n");
-	fprintf(of, "%d\n", outframe->timestep);
-	fprintf(of, "ITEM: NUMBER OF ATOMS\n");
-	fprintf(of, "%d\n", outframe->num_atoms); //could also consider using outframe->num_mol
-	fprintf(of, "ITEM: BOX BOUNDS pp pp pp\n");
-	fprintf(of, "%lf %lf\n%lf %lf\n%lf %lf\n", outframe->xmin, outframe->xmax, outframe->ymin, outframe->ymax, outframe->zmin, outframe->zmax);
-
-	fprintf(of, "ITEM: ATOMS id mol type q mass x y z U \n");
-		
-	for( i = 0; i < outframe->num_atoms; i++)
-		{
-		fprintf(of, "%d %d %d %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, outframe->sites[i].mol, \
-			outframe->sites[i].type, outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
-			outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[3]);
-		}
+	generic_frame_header(outframe, of); //output frame header
+	header4full(of);
+	out4full(outframe, of);	
 	fclose(of);
 }
 
@@ -483,26 +211,9 @@ void output_frame_second3(Controller* control, Frame* outframe, char* outfile)
 {
 	int i, j;
 	FILE* of = fopen(outfile, "a+");
-	
-	//output frame header
-	fprintf(of, "ITEM: TIMESTEP\n");
-	fprintf(of, "%d\n", outframe->timestep);
-	fprintf(of, "ITEM: NUMBER OF ATOMS\n");
-	fprintf(of, "%d\n", outframe->num_atoms); //could also consider using outframe->num_mol
-	fprintf(of, "ITEM: BOX BOUNDS pp pp pp\n");
-	fprintf(of, "%lf %lf\n%lf %lf\n %lf, %lf\n", outframe->xmin, outframe->xmax, outframe->ymin, outframe->ymax, outframe->zmin, outframe->zmax);
-
-	fprintf(of, "ITEM: ATOMS id mol type q mass x y z dfx dfy dfz \n");
-	
-	for( i = 0; i < outframe->num_atoms; i++)
-		{
-		
-		fprintf(of, "%d %d %d %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, outframe->sites[i].mol, \
-			outframe->sites[i].type, outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
-			outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[3], \
-			outframe->sites[i].observables[4], outframe->sites[i].observables[5]);
-		}
-		
+	generic_frame_header(outframe, of); //output frame header
+	header6full(of);
+	out6full(outframe, of);
 	fclose(of);
 }
 
@@ -515,7 +226,6 @@ void output_topology(Controller* control, Frame* outframe)
 	int i, j;
 	
 	fprintf(fp, "cgsites %d\n", outframe->num_atoms);
-	
 	fprintf(fp, "cgtypes %d\n", outframe->type_count);
 	for(i = 0; i < outframe->type_count; i++)
 		{
@@ -545,8 +255,7 @@ void output_topology(Controller* control, Frame* outframe)
 		{
 		fprintf(fp, "%d %d\n", i+1, outframe->type_num[i]);
 		}
-	fprintf(fp, "\n");
-	
+	fprintf(fp, "\n");	
 	fclose(fp);
 }
 
@@ -593,39 +302,12 @@ void output_force_file(Controller* control, int num, double* distance, double* p
 
 void output_charge_frames(Controller* control, Frame* outframe)
 {
-	//declare variables
-	int i=0;
-	
-	//printf("output frames\n");
+	int i=0;	
 	for(i = 0; i < control->num_outfile; i++)
 		{
 		printf("output %d\n", i);
 		output_frame_minimal_charge(control, &outframe[i], control->outfile[i]);
-		
 		printf("output %d finished\n", i);
-		}
-}
-
-////////////////////////////
-///   output_charge_log  ///
-////////////////////////////
-
-void output_charge_log(Controller* control)
-{
-	//declare variables
-	int i;
-	
-	if(control->frame <= 1)
-		{
-		for(i = 0; i < control->num_charges; i++) 
-			{
-			fprintf(control->outfile[i], "Step PotEng E_vdwl E_coul Volume\n");
-			}
-		}
-	
-	for(i = 0; i < control->num_charges; i++)
-		{
-		fprintf(control->outfile[i], "%lf\t%lf\t%lf\t%lf\t%lf\n", control->timestep, control->guesses[i], 0.0, control->guesses[i], control->volume);
 		}
 }
 
@@ -653,8 +335,192 @@ void create_and_output_bootstrapping_file(Controller* control, Frame* frames, in
 	//write each frame in order to file
 	for(i=0; i < control->num_frames; i++)
 		{
-		//printf("output_frame #%d as value frames[ %d ]\n", i, order[i]);
 		output_frame(control, &(frames[ order[i] ]), filename);
 		}
-	//printf("finished create_and_output_bootstrapping_file\n");
+}
+
+////////////////////////////////////////////
+/////	output_pointer_functions		////
+///////////////////////////////////////////
+void out0full(Frame* outframe, FILE* of)
+{
+	int i;
+	for( i = 0; i < outframe->num_atoms; i++)
+		{	
+		fprintf(of, "%d %d %d %lf %lf %lf %lf %lf\n", outframe->sites[i].id, outframe->sites[i].mol, \
+		outframe->sites[i].type, outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
+		outframe->sites[i].y, outframe->sites[i].z);
+		}
+}
+void out1full(Frame* outframe, FILE* of)
+{
+	int i;
+	for( i = 0; i < outframe->num_atoms; i++)
+		{	
+		fprintf(of, "%d %d %d %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, outframe->sites[i].mol, \
+		outframe->sites[i].type, outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
+		outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0]);
+		}
+}
+void out2full(Frame* outframe, FILE* of)
+{
+	int i;
+	for( i = 0; i < outframe->num_atoms; i++)
+		{	
+		fprintf(of, "%d %d %d %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, outframe->sites[i].mol, \
+		outframe->sites[i].type, outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
+		outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+		outframe->sites[i].observables[1]);
+		}
+}
+void out3full(Frame* outframe, FILE* of)
+{
+	int i;
+	for( i = 0; i < outframe->num_atoms; i++)
+		{	
+		fprintf(of, "%d %d %d %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, outframe->sites[i].mol, \
+		outframe->sites[i].type, outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
+		outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+		outframe->sites[i].observables[1], outframe->sites[i].observables[2]);
+		}
+}
+void out4full(Frame* outframe, FILE* of)
+{
+	int i;
+	for( i = 0; i < outframe->num_atoms; i++)
+		{	
+		fprintf(of, "%d %d %d %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, outframe->sites[i].mol, \
+		outframe->sites[i].type, outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
+		outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+		outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
+		outframe->sites[i].observables[3]);
+		}
+}	
+void out5full(Frame* outframe, FILE* of)
+{
+	int i;
+	for( i = 0; i < outframe->num_atoms; i++)
+		{	
+		fprintf(of, "%d %d %d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, outframe->sites[i].mol, \
+		outframe->sites[i].type, outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
+		outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+		outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
+		outframe->sites[i].observables[3], outframe->sites[i].observables[4]);
+		}
+}
+void out6full(Frame* outframe, FILE* of)
+{
+	int i;
+	for( i = 0; i < outframe->num_atoms; i++)
+		{	
+		fprintf(of, "%d %d %d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, outframe->sites[i].mol, \
+		outframe->sites[i].type, outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
+		outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+		outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
+		outframe->sites[i].observables[3], outframe->sites[i].observables[4], \
+		outframe->sites[i].observables[5]);
+		}
+}
+void out7full(Frame* outframe, FILE* of)
+{
+	int i;
+	for( i = 0; i < outframe->num_atoms; i++)
+		{	
+		fprintf(of, "%d %d %d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, outframe->sites[i].mol, \
+		outframe->sites[i].type, outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
+		outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+		outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
+		outframe->sites[i].observables[3], outframe->sites[i].observables[4], \
+		outframe->sites[i].observables[5], outframe->sites[i].observables[6]);
+		}
+}
+void out8full(Frame* outframe, FILE* of)
+{
+	int i;
+	for( i = 0; i < outframe->num_atoms; i++)
+		{	
+		fprintf(of, "%d %d %d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, outframe->sites[i].mol, \
+		outframe->sites[i].type, outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
+		outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+		outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
+		outframe->sites[i].observables[3], outframe->sites[i].observables[4], \
+		outframe->sites[i].observables[5], outframe->sites[i].observables[6], \
+		outframe->sites[i].observables[7]);
+		}
+}
+void out9full(Frame* outframe, FILE* of)
+{
+	int i;
+	for( i = 0; i < outframe->num_atoms; i++)
+		{	
+		fprintf(of, "%d %d %d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, outframe->sites[i].mol, \
+		outframe->sites[i].type, outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
+		outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+		outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
+		outframe->sites[i].observables[3], outframe->sites[i].observables[4], \
+		outframe->sites[i].observables[5], outframe->sites[i].observables[6], \
+		outframe->sites[i].observables[7], outframe->sites[i].observables[8]);
+		}
+}
+void default_func(FILE* of)
+{
+	printf("output number of observables not supported so giving generic 3 observable header\n");
+	fprintf(of, "ITEM: ATOMS id mol type q mass x y z fx fy fz\n");
+}
+void header0(FILE* of)
+{
+	fprintf(of, "ITEM: ATOMS x y z \n");
+}
+void header1(FILE* of)
+{
+	fprintf(of, "ITEM: ATOMS x y z U \n");
+}
+void header3(FILE* of)
+{
+	fprintf(of, "ITEM: ATOMS x y z fx fy fz \n");
+}
+void header4(FILE* of)
+{
+	fprintf(of, "ITEM: ATOMS x y z dfx dfy dfz dU \n");
+}
+void header6(FILE* of)
+{
+	fprintf(of, "ITEM: ATOMS x y z fx fy fz dfx dfy dfz \n");
+}
+void header7(FILE* of)
+{
+	fprintf(of, "ITEM: ATOMS x y z fx fy fz dfx dfy dfz dU \n");
+}
+void header0full(FILE* of)
+{
+	fprintf(of, "ITEM: ATOMS id mol type q mass x y z \n");
+}
+void header1full(FILE* of)
+{
+	fprintf(of, "ITEM: ATOMS id mol type q mass x y z U \n");
+}
+void header3full(FILE* of)
+{
+	fprintf(of, "ITEM: ATOMS id mol type q mass x y z fx fy fz \n");
+}
+void header4full(FILE* of)
+{
+	fprintf(of, "ITEM: ATOMS id mol type q mass x y z dfx dfy dfz dU \n");
+}
+void header6full(FILE* of)
+{
+	fprintf(of, "ITEM: ATOMS id mol type q mass x y z fx fy fz dfx dfy dfz \n");
+}
+void header7full(FILE* of)
+{
+	fprintf(of, "ITEM: ATOMS id mol type q mass x y z fx fy fz dfx dfy dfz dU \n");
+}
+void generic_frame_header(Frame* outframe, FILE* of)
+{
+	fprintf(of, "ITEM: TIMESTEP\n");
+	fprintf(of, "%d\n", outframe->timestep);
+	fprintf(of, "ITEM: NUMBER OF ATOMS\n");
+	fprintf(of, "%d\n", outframe->num_atoms); //could also consider using outframe->num_mol
+	fprintf(of, "ITEM: BOX BOUNDS pp pp pp\n");
+	fprintf(of, "%lf %lf\n%lf %lf\n%lf %lf\n", outframe->xmin, outframe->xmax, outframe->ymin, outframe->ymax, outframe->zmin, outframe->zmax);
 }
