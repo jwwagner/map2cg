@@ -389,19 +389,6 @@ void read_topology_file(Controller *control, char* topfile)
     	else printf("control->sign_flag = %d\n", control->sign_flag);
     	}
     	
-    if(control->sensitivity_flag == 1)
-    	{
-    	control->debug_flag = 0;
-    	
-    	fgets(line,100,fr);//blank line    	
-    	
-    	fgets(line,100,fr);//1st dump file
-    	sscanf(line, "%s", control->files.dump1);
-    	
-    	fgets(line,100,fr);//2nd dump file
-    	sscanf(line, "%s", control->files.dump2);
-   		}
-   	
 	 else if(control->sensitivity_flag == 2)
     	{
     	fgets(line,100,fr);//blank line
