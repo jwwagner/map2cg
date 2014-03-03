@@ -163,15 +163,38 @@ int main(int argc,char *argv[])
 	printf("finished reading topology_file\n");
 	
 	//determine appropriate controller function
-	if(controls.sensitivity_flag == 0) do_simple_map(&controls, &frame, &outframe, datfile, outfile);
-	else if(controls.sensitivity_flag == 1) do_sensitivity_map(&controls, &frame, &outframe, outfile);	
-	else if(controls.sensitivity_flag == 2) do_map_to_full(&controls, &frame, &outframe, datfile, outfile);
-	else if(controls.sensitivity_flag == 3) do_force_conversion(&controls, datfile, outfile);
-	else if(controls.sensitivity_flag == 4) do_sort_frame_by_type(&controls, &frame, &outframe, datfile, outfile);
-	else if(controls.sensitivity_flag == 5) do_bootstrapping(&controls, datfile);
-	else if(controls.sensitivity_flag == 6) do_ii_charge_derivative(&controls, &frame, &outframe);
-	else if(controls.sensitivity_flag == 7) do_ij_charge_derivative(&controls);
-	
+	if(controls.sensitivity_flag == 0) 
+		{
+		do_simple_map(&controls, &frame, &outframe, datfile, outfile);
+		}
+	else if(controls.sensitivity_flag == 1) 
+		{
+		do_sensitivity_map(&controls, &frame, &outframe, outfile);	
+		}
+	else if(controls.sensitivity_flag == 2) 
+		{
+		do_map_to_full(&controls, &frame, &outframe, datfile, outfile);
+		}
+	else if(controls.sensitivity_flag == 3) 
+		{
+		do_force_conversion(&controls, datfile, outfile);
+		}
+	else if(controls.sensitivity_flag == 4) 
+		{
+		do_sort_frame_by_type(&controls, &frame, &outframe, datfile, outfile);
+		}
+	else if(controls.sensitivity_flag == 5) 
+		{
+		do_bootstrapping(&controls, datfile);
+		}
+	else if(controls.sensitivity_flag == 6) 
+		{
+		do_ii_charge_derivative(&controls, &frame, &outframe);
+		}
+	else if(controls.sensitivity_flag == 7) 
+		{
+		do_ij_charge_derivative(&controls);
+		}
 	//free allocated variables
 	printf("free basic files\n");
 	free(datfile);
@@ -261,20 +284,41 @@ void do_sensitivity_map(Controller* controls, Frame* inframe1, Frame* outframe, 
 	fclose(of);
 	
 	//check that all files opened correctly
-	if(df1 == NULL) printf("dump file #1 specified does not exist\n");
-	if(df2 == NULL) printf("dump file #2 specified does not exist\n");
-	if(lf == NULL) printf("log file specified does not exist\n");
-	if(gf == NULL) printf("guess file specified does not exist\n");
+	if(df1 == NULL)
+		{
+		printf("dump file #1 specified does not exist\n");
+		}
+	if(df2 == NULL) 
+		{
+		printf("dump file #2 specified does not exist\n");
+		}
+	if(lf == NULL) 
+		{
+		printf("log file specified does not exist\n");
+		}
+	if(gf == NULL) 
+		{
+		printf("guess file specified does not exist\n");
+		}
 
 	//exit if there is an error
-	if( (df1 == NULL) || (df2 == NULL) || (lf == NULL) || (gf == NULL) )  exit(EXIT_SUCCESS);
+	if( (df1 == NULL) || (df2 == NULL) || (lf == NULL) || (gf == NULL) ) 
+		{
+		exit(EXIT_SUCCESS);
+		}
 		
 	//read first frames
 	frame_count++;
 	controls->frame++;
 	
-	if( controls->sens_map_flag == 0) sensitivity_no_mapping(controls, df1, df2, lf, gf, of, inframe1, &inframe2, outframe, outfile);
-	else if( controls->sens_map_flag == 1) sensitivity_with_mapping(controls, df1, df2, lf, gf, of, inframe1, &inframe2, outframe, outfile);
+	if( controls->sens_map_flag == 0) 
+		{
+		sensitivity_no_mapping(controls, df1, df2, lf, gf, of, inframe1, &inframe2, outframe, outfile);
+		}
+	else if( controls->sens_map_flag == 1) 
+		{
+		sensitivity_with_mapping(controls, df1, df2, lf, gf, of, inframe1, &inframe2, outframe, outfile);
+		}
 	
 	//close files for frame, log, and guess reading
 	fclose(df1);
@@ -476,7 +520,10 @@ void do_bootstrapping(Controller* control, char* datfile)
 		//create frame set and output results
 		create_and_output_bootstrapping_file(control, mapped_frames, frame_order, &file_count);		
 		file_count++;
-		if(file_count > control->charge[1]) cont_flag = 0;
+		if(file_count > control->charge[1]) 
+			{
+			cont_flag = 0;
+			}
 		else
 			{
 			//read next bootstrapping file
@@ -624,9 +671,15 @@ void do_ij_charge_derivative(Controller* control)
 	if( cont_flag == 0 )  
 		{
 		//close files openend and free allocated space
-		for(i = 0; i < control->num_files; i++) fclose(control->file_point[i]);
+		for(i = 0; i < control->num_files; i++) 
+			{
+			fclose(control->file_point[i]);
+			}
 		free(control->file_point);
-		for(i = 0; i < control->num_outfile; i++) fclose(control->outfile[i]);
+		for(i = 0; i < control->num_outfile; i++) 
+			{
+			fclose(control->outfile[i]);
+			}
 		free(control->outfile);
 		free(inframes);
 		free(outframes);
@@ -913,5 +966,8 @@ void free_outframes(Controller* control, Frame* outframe)
 	free(outframe->type);
 	free(outframe->type_num);
 	
-	if(control->frame > 1) free(outframe->sites);
+	if(control->frame > 1) 
+		{
+		free(outframe->sites);
+		}
 }

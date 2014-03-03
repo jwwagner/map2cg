@@ -408,8 +408,11 @@ void combine_sensitivity_data(Controller* control, Frame* inframe1, Frame* infra
 	int i, j, k;
 	double scalar = control->log_value / control->scaleU1 - control->guess / control->scaleU2;
 	int paired[inframe2->num_atoms];
-	for(i = 0; i < inframe2->num_atoms; i++) paired[i] = 0;
-
+	for(i = 0; i < inframe2->num_atoms; i++) 
+		{
+		paired[i] = 0;
+		}
+		
 	//popluate outframe with necessary general information
 	outframe->type_count = 0;
 	outframe->xmin = inframe1->xmin;
@@ -501,8 +504,11 @@ void combine_cg_sensitivity_data(Controller* control, Frame* inframe1, Frame* in
 	double scalar = control->log_value - control->guess;
 	int paired[inframe2->num_atoms];
 	
-	for(i = 0; i < inframe2->num_atoms; i++) paired[i] = 0;
-
+	for(i = 0; i < inframe2->num_atoms; i++) 
+		{
+		paired[i] = 0;
+		}
+		
 	//popluate outframe with necessary general information
 	outframe->type_count = 0;
 	outframe->xmin = inframe1->xmin;
@@ -698,20 +704,24 @@ void process_frame_order(Controller* control, Frame* inframe, Frame* outframe)
 	
 	//GET ORDER FOR OUTPUT
 	prev = -1;
+	//int type_val = control->num_cg_types;
 	for(i = 0; i < control->num_cg_types; i++)
 		{
-		type = control->num_cg_types;
+		int type_val = control->num_cg_types;
 		for(j = 0; j < control->num_cg_types; j++)
 			{
-			if (inframe->type[j] <= inframe->type[type]) //get the lowest type value as "low water mark"
+			//printf("TRY:: i=%d, inframe->type[%d] = %d\n", i, j, inframe->type[j]);
+			if (inframe->type[j] <= type_val) //get the lowest type value as "low water mark"
 				{
 				if(inframe->type[j] > prev) //exclude the same type from matching repeatedly
 					{
+					//printf("WIN:: prev %d and type_val %d\n", prev, type_val);
 					type = j;
+					type_val = inframe->type[j];
 					}
 				}
 			}
-		control->order[i] = type;
+		control->order[i] = type_val;
 		//printf("ORDER:: control->order[%d] = %d\n", i, type);
 		prev = inframe->type[type];
 		}
@@ -730,7 +740,10 @@ void process_frame_order(Controller* control, Frame* inframe, Frame* outframe)
 				prev = j;
 				}
 			}
-		if(prev == -1) printf("ERROR: NO TYPE MATCH FOUND FOR ORDER #%d TYPE %d\n", i, inframe->type[i]);
+		if(prev == -1) 
+			{
+			printf("ERROR: NO TYPE MATCH FOUND FOR ORDER #%d TYPE %d\n", i, inframe->type[i]);
+			}
 		//printf("COPY TYPE %d with num %d to match %d\n", i+1, prev, control->order[i]);
 		outframe->type[i] = inframe->type[ prev ];
 		outframe->type_num[i] = inframe->type_num[ prev ];
@@ -741,8 +754,8 @@ void process_frame_order(Controller* control, Frame* inframe, Frame* outframe)
 			id = inframe->type_list[ prev ][j];
 			//printf("id %d from prev %d", id, prev);
 			outframe->sites[spot].num_in_site = 1;
-			outframe->sites[spot].id = inframe->atoms[id].id;
-			outframe->sites[spot].mol = inframe->atoms[id].mol;
+			outframe->sites[spot].id = spot+1; //inframe->atoms[id].id;
+			outframe->sites[spot].mol = spot+1; //inframe->atoms[id].mol;
 			outframe->sites[spot].type = inframe->atoms[id].type;
 			outframe->sites[spot].q = inframe->atoms[id].q;
 			outframe->sites[spot].mass = inframe->atoms[id].mass;
@@ -1053,7 +1066,10 @@ void determine_type(Controller* control, Frame* inframe, Frame* outframe, int* c
 				//verify if newest type is still a match
 				found = 0;
 				
-				if( control->prototype[j].num == min_val) tie++;
+				if( control->prototype[j].num == min_val) 
+					{
+					tie++;
+					}
 				if( control->prototype[j].num < min_val)
 					{
 					min_loc = j;
@@ -1071,8 +1087,14 @@ void determine_type(Controller* control, Frame* inframe, Frame* outframe, int* c
 					}
 				}	
 				
-			if(found == 0)  outframe->sites[*map].matches[j] = 0;
-			else num_matches++;
+			if(found == 0)  
+				{
+				outframe->sites[*map].matches[j] = 0;
+				}
+			else 
+				{
+				num_matches++;
+				}
 			}
 					
 		//see if we have a unique match (or need evaluation or no match)
@@ -1193,7 +1215,7 @@ void determine_type(Controller* control, Frame* inframe, Frame* outframe, int* c
 						{
 						if(outframe->type[k] == outframe->sites[*map].type)
 							{
-								l = 1;
+							l = 1;
 							}
 						}
 					
@@ -1241,24 +1263,42 @@ void geometry_mapping(Controller* control, Frame* inframe, Frame* outframe)
 				box = outframe->xmax - outframe->xmin;
 				if( abs(dist) >= (box/2.0) )
 					{
-					if(dist > 0) outframe->sites[i].coord[j].x -= box;
-					else		 outframe->sites[i].coord[j].x += box;
+					if(dist > 0) 
+						{
+						outframe->sites[i].coord[j].x -= box;
+						}
+					else
+						{
+						outframe->sites[i].coord[j].x += box;
+						}
 					}					
 					
 				dist = outframe->sites[i].coord[j].y - outframe->sites[i].coord[0].y;
 				box = outframe->ymax - outframe->ymin;
 				if( abs(dist) >= (box/2.0) )
 					{
-					if(dist > 0) outframe->sites[i].coord[j].y -= box;
-					else		 outframe->sites[i].coord[j].y += box;
+					if(dist > 0) 
+						{
+						outframe->sites[i].coord[j].y -= box;
+						}
+					else
+						{
+						outframe->sites[i].coord[j].y += box;
+						}
 					}	
 					
 				dist = outframe->sites[i].coord[j].z - outframe->sites[i].coord[0].z;
 				box = outframe->zmax - outframe->zmin;
 				if( abs(dist) >= (box/2.0) )
 					{
-					if(dist > 0) outframe->sites[i].coord[j].z -= box;
-					else		 outframe->sites[i].coord[j].z += box;
+					if(dist > 0) 
+						{
+						outframe->sites[i].coord[j].z -= box;
+						}
+					else
+						{
+						outframe->sites[i].coord[j].z += box;
+						}
 					}
 						
 				//add value to weighted sum
@@ -1275,12 +1315,30 @@ void geometry_mapping(Controller* control, Frame* inframe, Frame* outframe)
 			outframe->sites[i].z = outz / tot_mass;
 
 			//check if final coordinate is in box (wrap)
-			if( outframe->sites[i].x > outframe->xmax ) outframe->sites[i].x -= outframe->xmax - outframe->xmin;
-			if( outframe->sites[i].x < outframe->xmin ) outframe->sites[i].x += outframe->xmax - outframe->xmin;
-			if( outframe->sites[i].y > outframe->ymax ) outframe->sites[i].y -= outframe->ymax - outframe->ymin;
-			if( outframe->sites[i].y < outframe->ymin ) outframe->sites[i].y += outframe->ymax - outframe->ymin;
-			if( outframe->sites[i].z > outframe->zmax ) outframe->sites[i].z -= outframe->zmax - outframe->zmin;
-			if( outframe->sites[i].z < outframe->zmin ) outframe->sites[i].z += outframe->zmax - outframe->zmin;
+			if( outframe->sites[i].x > outframe->xmax ) 
+				{
+				outframe->sites[i].x -= outframe->xmax - outframe->xmin;
+				}
+			if( outframe->sites[i].x < outframe->xmin ) 
+				{
+				outframe->sites[i].x += outframe->xmax - outframe->xmin;
+				}
+			if( outframe->sites[i].y > outframe->ymax ) 
+				{
+				outframe->sites[i].y -= outframe->ymax - outframe->ymin;
+				}
+			if( outframe->sites[i].y < outframe->ymin ) 
+				{
+				outframe->sites[i].y += outframe->ymax - outframe->ymin;
+				}
+			if( outframe->sites[i].z > outframe->zmax ) 
+				{
+				outframe->sites[i].z -= outframe->zmax - outframe->zmin;
+				}
+			if( outframe->sites[i].z < outframe->zmin ) 
+				{
+				outframe->sites[i].z += outframe->zmax - outframe->zmin;
+				}
 					
 			//set total mass
 			outframe->sites[i].mass = tot_mass;
@@ -1302,24 +1360,42 @@ void geometry_mapping(Controller* control, Frame* inframe, Frame* outframe)
 				box = outframe->xmax - outframe->xmin;
 				if( abs(dist) >= (box/2.0) )
 					{
-					if(dist > 0) outframe->sites[i].coord[j].x -= box;
-					else		 outframe->sites[i].coord[j].x += box;
+					if(dist > 0) 
+						{
+						outframe->sites[i].coord[j].x -= box;
+						}
+					else
+						{
+						outframe->sites[i].coord[j].x += box;
+						}
 					}
 				
 				dist = outframe->sites[i].coord[j].y - outframe->sites[i].coord[0].y;
 				box = outframe->ymax - outframe->ymin;
 				if( abs(dist) >= (box/2.0) )
 					{
-					if(dist > 0) outframe->sites[i].coord[j].y -= box;
-					else		 outframe->sites[i].coord[j].y += box;
+					if(dist > 0) 
+						{
+						outframe->sites[i].coord[j].y -= box;
+						}
+					else
+						{
+						outframe->sites[i].coord[j].y += box;
+						}
 					}
 				
 				dist = outframe->sites[i].coord[j].z - outframe->sites[i].coord[0].z;
 				box = outframe->zmax - outframe->zmin;
 				if( abs(dist) >= (box/2.0) )
 					{
-					if(dist > 0) outframe->sites[i].coord[j].z -= box;
-					else		 outframe->sites[i].coord[j].z += box;
+					if(dist > 0) 
+						{
+						outframe->sites[i].coord[j].z -= box;
+						}
+					else
+						{
+						outframe->sites[i].coord[j].z += box;
+						}
 					}
 				
 				//add value to weighted sum
@@ -1335,12 +1411,30 @@ void geometry_mapping(Controller* control, Frame* inframe, Frame* outframe)
 			outframe->sites[i].z = outz / outframe->sites[i].num_in_site;
 			
 			//check if final coordinate is in box (wrap)
-			if( outframe->sites[i].x > outframe->xmax ) outframe->sites[i].x -= outframe->xmax - outframe->xmin;
-			if( outframe->sites[i].x < outframe->xmin ) outframe->sites[i].x += outframe->xmax - outframe->xmin;
-			if( outframe->sites[i].y > outframe->ymax ) outframe->sites[i].y -= outframe->ymax - outframe->ymin;
-			if( outframe->sites[i].y < outframe->ymin ) outframe->sites[i].y += outframe->ymax - outframe->ymin;
-			if( outframe->sites[i].z > outframe->zmax ) outframe->sites[i].z -= outframe->zmax - outframe->zmin;
-			if( outframe->sites[i].z < outframe->zmin ) outframe->sites[i].z += outframe->zmax - outframe->zmin;
+			if( outframe->sites[i].x > outframe->xmax ) 
+				{
+				outframe->sites[i].x -= outframe->xmax - outframe->xmin;
+				}
+			if( outframe->sites[i].x < outframe->xmin ) 
+				{
+				outframe->sites[i].x += outframe->xmax - outframe->xmin;
+				}
+			if( outframe->sites[i].y > outframe->ymax ) 
+				{
+				outframe->sites[i].y -= outframe->ymax - outframe->ymin;
+				}
+			if( outframe->sites[i].y < outframe->ymin ) 
+				{
+				outframe->sites[i].y += outframe->ymax - outframe->ymin;
+				}
+			if( outframe->sites[i].z > outframe->zmax ) 
+				{
+				outframe->sites[i].z -= outframe->zmax - outframe->zmin;
+				}
+			if( outframe->sites[i].z < outframe->zmin ) 
+				{
+				outframe->sites[i].z += outframe->zmax - outframe->zmin;
+				}
 					
 			//set total mass
 			outframe->sites[i].mass = tot_mass;

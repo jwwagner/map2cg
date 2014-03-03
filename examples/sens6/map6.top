@@ -15,6 +15,6 @@
 #blank								
 0		#mapping style flag #number of types to map #follow with type # on each line
 #blank
-0.5
-frame1.dat
-out1.dat
+QI
+deriv_map.dat
+deriv_charge_map.dat

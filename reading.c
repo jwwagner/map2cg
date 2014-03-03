@@ -48,7 +48,10 @@ void read9min(Frame*, FILE*);
 
 void parse_command_line_arguments(int num_arg, char** arg, char* filename1, char* filename2, char* outfile)
 {
-    if (num_arg != 1 && num_arg != 3 && num_arg != 5 && num_arg != 7) report_usage_error(arg[0]);
+    if (num_arg != 1 && num_arg != 3 && num_arg != 5 && num_arg != 7) 
+    	{
+    	report_usage_error(arg[0]);
+    	}
     else if (num_arg == 3) 
     	{
         if (strcmp(arg[1], "-f") == 0)
@@ -76,7 +79,10 @@ void parse_command_line_arguments(int num_arg, char** arg, char* filename1, char
     	} 
     else if (num_arg == 5) 
     	{
-        if ( ((strcmp(arg[1], "-f") != 0) || (strcmp(arg[3], "-f1") != 0)) && ((strcmp(arg[1], "-f1") != 0) || (strcmp(arg[3], "-o") != 0)) && ((strcmp(arg[1], "-f") != 0) || (strcmp(arg[3], "-o") != 0)) ) report_usage_error(arg[0]);
+        if ( ((strcmp(arg[1], "-f") != 0) || (strcmp(arg[3], "-f1") != 0)) && ((strcmp(arg[1], "-f1") != 0) || (strcmp(arg[3], "-o") != 0)) && ((strcmp(arg[1], "-f") != 0) || (strcmp(arg[3], "-o") != 0)) ) 
+        	{
+        	report_usage_error(arg[0]);
+        	}
         else if ( strcmp(arg[1], "-f") == 0 && strcmp(arg[3], "-f1") == 0 )
         	{
         	sscanf(arg[2], "%s", filename1);
@@ -104,7 +110,10 @@ void parse_command_line_arguments(int num_arg, char** arg, char* filename1, char
      	}
 	else if (num_arg == 7) 
     	{
-        if (strcmp(arg[1], "-f") != 0 || strcmp(arg[3], "-f1") != 0 || strcmp(arg[5], "-o") != 0) report_usage_error(arg[0]);
+        if (strcmp(arg[1], "-f") != 0 || strcmp(arg[3], "-f1") != 0 || strcmp(arg[5], "-o") != 0) 
+        	{
+        	report_usage_error(arg[0]);
+			}
 		else
 			{
 			sscanf(arg[2], "%s", filename1);
@@ -342,9 +351,14 @@ void read_topology_file(Controller *control, char* topfile)
     	
     	//set scaleF flag
     	double temp = 300.0 * 0.00198720414; //kcal/(mol K)
-    	if( (control->debug_flag == 3) || (control->debug_flag == 5) ) control->scaleF = temp;
-    	else control->scaleF = 1.0;
-    	
+    	if( (control->debug_flag == 3) || (control->debug_flag == 5) ) 
+    		{
+    		control->scaleF = temp;
+    		}
+    	else {
+    		control->scaleF = 1.0;
+    		}
+    		
     	//set scaleU flag
     	control->scaleU1 = 1.0;
     	control->scaleU2 = 1.0;
@@ -606,7 +620,10 @@ void read_frame(Controller* control, Frame* frame, FILE* df, int* flag)
     			{
     				if(control->sens_map_flag == 1) 
     					{
-    					if(i != control->num_cg_sites) printf("num cg sites = %d does not match num atoms %d\n", control->num_cg_sites, i);
+    					if(i != control->num_cg_sites) 
+    						{
+    						printf("num cg sites = %d does not match num atoms %d\n", control->num_cg_sites, i);
+    						}
     					}
     				else
     					{
@@ -616,7 +633,10 @@ void read_frame(Controller* control, Frame* frame, FILE* df, int* flag)
     		frame->num_atoms = i;
 			frame->atoms = malloc(frame->num_atoms * sizeof(ATOM));
 			frame->num_observables = control->num_observables;
-			for(j = 0; j < frame->num_atoms; j++) frame->atoms[j].mol = 0;
+			for(j = 0; j < frame->num_atoms; j++) 
+				{ 
+				frame->atoms[j].mol = 0; 
+				}
 			}
 		else //number of atoms has changed
 			{
@@ -715,7 +735,10 @@ void read_frame_minimal(Controller* control, Frame* frame, FILE* df, int* flag)
     			{
     				if(control->sens_map_flag == 1) 
     					{
-    					if(i != control->num_cg_sites) printf("num cg sites = %d does not match num atoms %d\n", control->num_cg_sites, i);
+    					if(i != control->num_cg_sites) 
+    						{
+    						printf("num cg sites = %d does not match num atoms %d\n", control->num_cg_sites, i);
+    						}
     					}
     				else
     					{
@@ -821,8 +844,7 @@ void read_frames_and_log(Controller* control, Frame* inframe1, Frame* inframe2, 
 ////////////////////////////////
 
 void read_charge_frames(Controller* control, Frame* inframes, int* flag)
-{
-	//declare variables
+{	//declare variables
 	int i;
 	int temp = 1;
 	
@@ -845,8 +867,7 @@ void read_charge_frames(Controller* control, Frame* inframes, int* flag)
 /////////////////////////////////////////////////////
 
 void read_and_process_bootstrapping_trajectory(Controller* control, Frame* outframes, FILE* fp, int* flag)
-{
-	//declare variables
+{	//declare variables
 	int i;
 	int temp = 1;
 	Frame inframe;
@@ -884,8 +905,7 @@ void read_and_process_bootstrapping_trajectory(Controller* control, Frame* outfr
 /////////////////////////////////////
 
 void read_bootstrapping_file(Controller* control, int* frame_order, int* count)
-{
-	//declare variables
+{	//declare variables
 	int i;
 	char filename[32] = "";
 	char line[100];
@@ -915,11 +935,9 @@ void read_bootstrapping_file(Controller* control, int* frame_order, int* count)
 ////////////////////////
 
 void read_logfile(Controller* control, FILE* lf, double* out_val, int* flag)
-{
-	//declare varaibles
+{	//declare varaibles
 	int i;
-	double junk, junk1, junk2;
-	double val1, val2;
+	double time, pe, vdwl, coul, volume;
 	char line[100];
 	char test[8];
 	
@@ -934,41 +952,53 @@ void read_logfile(Controller* control, FILE* lf, double* out_val, int* flag)
 
 	//check if we need to skip header info
 	if(control->frame == 1)
-	{
+		{
 		i = 1;
 		char test2[5];
 		
 		while(i == 1)
-		{
+			{
 			//check line
 			memcpy(test2, &line[0], 4);
 			test2[4] = '\0';
-			if( strcmp(test2, "Step") == 0) i = 0;			
+			if( strcmp(test2, "Step") == 0) 
+				{
+				i = 0;			
+				}
 			
 			//check if we are at EOF
 			if( fgets (line, 100, lf) == NULL )
-			{
+				{
 				*flag = 0;
 				printf("end of file reached in logfile!\n");
 				eof_exit2(control, lf, flag);
 				return;
+				}
 			}
 		}
-	}
 	
 	//see if this is a WARNING line or actual content
 	memcpy(test, &line[0], 7);
 	test[7] = '\0';
-	if( strcmp(test, "WARNING") == 0) fgets(line, 100, lf);
+	if( strcmp(test, "WARNING") == 0) 
+		{
+		fgets(line, 100, lf);
+		}
 	
 	//read actual content for energy value
-	sscanf(line, "%lf %lf %lf %lf %lf", &junk, &junk1, &val1, &val2, &junk2);
+	sscanf(line, "%lf %lf %lf %lf %lf", &time, &pe, &vdwl, &coul, &volume);
 	
-	if(control->log_type == 0) *out_val = val1;
-	else if(control->log_type == 1) *out_val = val2;
-	
-	control->timestep = junk;
-	control->volume = junk2;
+	if(control->log_type == 0) 
+		{
+		*out_val = vdwl;
+		}
+	else if(control->log_type == 1) 
+		{
+		*out_val = coul;
+		}
+		
+	control->timestep = time;
+	control->volume = volume;
 }
 
 /////////////////////////
@@ -1010,9 +1040,9 @@ void read_guess(Controller* control, FILE* gf, int* flag)
 		if(control->frame == 1)
 			{
 			char test[8];
-			double junk, junk1, junk2, val1, val2;
-			i = 1;
 			char test2[5];
+			double time, pe, vdwl, coul, volume;
+			i = 1;
 		
 			while(i == 1)
 				{
@@ -1036,12 +1066,21 @@ void read_guess(Controller* control, FILE* gf, int* flag)
 			//see if this is a WARNING line or actual content
 			memcpy(test, &line[0], 7);
 			test[7] = '\0';
-			if( strcmp(test, "WARNING") == 0) fgets(line, 100, gf);
-	
+			if( strcmp(test, "WARNING") == 0) 
+				{
+				fgets(line, 100, gf);
+				}
+				
 			//read actual content for energy value
-			sscanf(line, "%lf %lf %lf %lf %lf", &junk, &junk1, &val1, &val2, &junk2);
-			if(control->log_type == 0) control->guess = val1;
-			else if(control->log_type == 1) control->guess = val2;
+			sscanf(line, "%lf %lf %lf %lf %lf", &time, &pe, &vdwl, &coul, &volume);
+			if(control->log_type == 0) 
+				{
+				control->guess = vdwl;
+				}
+			else if(control->log_type == 1) 
+				{
+				control->guess = coul;
+				}
 			}
 		}
 }
@@ -1051,8 +1090,7 @@ void read_guess(Controller* control, FILE* gf, int* flag)
 ////////////////////////////
 
 void read_force_file(Controller* control, char* file, double* distance, double* force,  int* number_of_lines)
-{
-	//declare variables
+{	//declare variables
 	int i;
 	int num_lines = 0;
 	int flag = 1;
@@ -1184,10 +1222,18 @@ void check_file_extension(char* name, char* suffix)
     len = strlen(name);
     pos = -1;
     for (i = 0; i < len; i++) {
-        if (name[i] == '.') pos = i;
+        if (name[i] == '.') 
+        	{
+        	pos = i;
+        	}
     }
-    if (pos < 0) report_traj_input_suffix_error(suffix);
-    if (strcmp(&name[pos + 1], suffix) != 0) report_traj_input_suffix_error(suffix);
+    if (pos < 0) {
+    	report_traj_input_suffix_error(suffix);
+    	}
+    if (strcmp(&name[pos + 1], suffix) != 0) 
+    	{
+    	report_traj_input_suffix_error(suffix);
+		}
 }
 
 void report_traj_input_suffix_error(char *suffix)
@@ -1230,7 +1276,10 @@ void read0full( Frame* frame, FILE* df)
 		sscanf(line, "%d %d %d %lf %lf %lf %lf %lf", &frame->atoms[i].id, \
     	&frame->atoms[i].mol, &frame->atoms[i].type, &frame->atoms[i].q, &frame->atoms[i].mass, \
    		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z);		
-		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) frame->num_mol = frame->atoms[i].mol;
+		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+			{
+			frame->num_mol = frame->atoms[i].mol;
+			}
 		}
 } 
 void read1full( Frame* frame, FILE* df)
@@ -1243,7 +1292,10 @@ void read1full( Frame* frame, FILE* df)
 		sscanf(line, "%d %d %d %lf %lf %lf %lf %lf %lf", &frame->atoms[i].id, \
 		&frame->atoms[i].mol, &frame->atoms[i].type, &frame->atoms[i].q, &frame->atoms[i].mass, \
 		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0]);		
-		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) frame->num_mol = frame->atoms[i].mol;
+		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+			{
+			frame->num_mol = frame->atoms[i].mol;
+			}
 		}
 }
 void read2full( Frame* frame, FILE* df)
@@ -1257,7 +1309,10 @@ void read2full( Frame* frame, FILE* df)
 		&frame->atoms[i].mol, &frame->atoms[i].type, &frame->atoms[i].q, &frame->atoms[i].mass, \
 		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \
 		&frame->atoms[i].observables[1]);		
-		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) frame->num_mol = frame->atoms[i].mol;
+		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+			{
+			frame->num_mol = frame->atoms[i].mol;
+			}
 		}
 }
 void read3full( Frame* frame, FILE* df)
@@ -1271,7 +1326,10 @@ void read3full( Frame* frame, FILE* df)
 		&frame->atoms[i].mol, &frame->atoms[i].type, &frame->atoms[i].q, &frame->atoms[i].mass, \
 		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \ 
 		&frame->atoms[i].observables[1], &frame->atoms[i].observables[2]);		
-		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) frame->num_mol = frame->atoms[i].mol;
+		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+			{
+			frame->num_mol = frame->atoms[i].mol;
+			}
 		}
 }
 void read4full( Frame* frame, FILE* df)
@@ -1285,7 +1343,10 @@ void read4full( Frame* frame, FILE* df)
 		&frame->atoms[i].mol, &frame->atoms[i].type, &frame->atoms[i].q, &frame->atoms[i].mass, \ 
 		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \ 
 		&frame->atoms[i].observables[1], &frame->atoms[i].observables[2], &frame->atoms[i].observables[3]);		
-		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) frame->num_mol = frame->atoms[i].mol;
+		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+			{
+			frame->num_mol = frame->atoms[i].mol;
+			}
 		}
 }
 void read5full( Frame* frame, FILE* df)
@@ -1300,7 +1361,10 @@ void read5full( Frame* frame, FILE* df)
 		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \ 
 		&frame->atoms[i].observables[1], &frame->atoms[i].observables[2], &frame->atoms[i].observables[3], \
 		&frame->atoms[i].observables[4]);		
-		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) frame->num_mol = frame->atoms[i].mol;
+		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+			{
+			frame->num_mol = frame->atoms[i].mol;
+			}
 		}
 }
 void read6full( Frame* frame, FILE* df)
@@ -1315,7 +1379,10 @@ void read6full( Frame* frame, FILE* df)
 		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \ 
 		&frame->atoms[i].observables[1], &frame->atoms[i].observables[2], &frame->atoms[i].observables[3], \
 		&frame->atoms[i].observables[4], &frame->atoms[i].observables[5]);		
-		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) frame->num_mol = frame->atoms[i].mol;
+		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+			{
+			frame->num_mol = frame->atoms[i].mol;
+			}
 		}
 }
 void read7full( Frame* frame, FILE* df)
@@ -1330,7 +1397,10 @@ void read7full( Frame* frame, FILE* df)
 		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \ 
 		&frame->atoms[i].observables[1], &frame->atoms[i].observables[2], &frame->atoms[i].observables[3], \
 		&frame->atoms[i].observables[4], &frame->atoms[i].observables[5], &frame->atoms[i].observables[6]);		
-		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) frame->num_mol = frame->atoms[i].mol;
+		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+			{
+			frame->num_mol = frame->atoms[i].mol;
+			}
 		}
 }
 void read8full( Frame* frame, FILE* df)
@@ -1346,7 +1416,10 @@ void read8full( Frame* frame, FILE* df)
 		&frame->atoms[i].observables[1], &frame->atoms[i].observables[2], &frame->atoms[i].observables[3], \
 		&frame->atoms[i].observables[4], &frame->atoms[i].observables[5], &frame->atoms[i].observables[6], \
 		&frame->atoms[i].observables[7]);		
-		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) frame->num_mol = frame->atoms[i].mol;
+		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+			{
+			frame->num_mol = frame->atoms[i].mol;
+			}
 		}
 }
 void read9full( Frame* frame, FILE* df)
@@ -1362,7 +1435,10 @@ void read9full( Frame* frame, FILE* df)
 		&frame->atoms[i].observables[1], &frame->atoms[i].observables[2], &frame->atoms[i].observables[3], \
 		&frame->atoms[i].observables[4], &frame->atoms[i].observables[5], &frame->atoms[i].observables[6], \
 		&frame->atoms[i].observables[7], &frame->atoms[i].observables[8]);		
-		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) frame->num_mol = frame->atoms[i].mol;
+		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+			{
+			frame->num_mol = frame->atoms[i].mol;
+			}
 		}
 }
 void read0min( Frame* frame, FILE* df)
@@ -1374,7 +1450,10 @@ void read0min( Frame* frame, FILE* df)
 		fgets(line,100,df);
 		sscanf(line, "%lf %lf %lf", \
 		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z);		
-		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) frame->num_mol = frame->atoms[i].mol;
+		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+			{
+			frame->num_mol = frame->atoms[i].mol;
+			}
 		}
 }	
 void read1min( Frame* frame, FILE* df)
@@ -1386,7 +1465,10 @@ void read1min( Frame* frame, FILE* df)
 		fgets(line,100,df);
 		sscanf(line, "%lf %lf %lf %lf", \
 		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0]);		
-		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) frame->num_mol = frame->atoms[i].mol;
+		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+			{
+			frame->num_mol = frame->atoms[i].mol;
+			}
 		}
 }
 void read2min( Frame* frame, FILE* df)
@@ -1399,7 +1481,10 @@ void read2min( Frame* frame, FILE* df)
 		sscanf(line, "%lf %lf %lf %lf %lf", \ 
 		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \
 		&frame->atoms[i].observables[1]);		
-		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) frame->num_mol = frame->atoms[i].mol;
+		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+			{
+			frame->num_mol = frame->atoms[i].mol;
+			}
 		}
 }	
 void read3min( Frame* frame, FILE* df)
@@ -1412,7 +1497,10 @@ void read3min( Frame* frame, FILE* df)
 		sscanf(line, "%lf %lf %lf %lf %lf %lf", \
 		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \ 
 		&frame->atoms[i].observables[1], &frame->atoms[i].observables[2]);		
-		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) frame->num_mol = frame->atoms[i].mol;
+		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+			{
+			frame->num_mol = frame->atoms[i].mol;
+			}
 		}
 }
 void read4min( Frame* frame, FILE* df)
@@ -1425,7 +1513,10 @@ void read4min( Frame* frame, FILE* df)
 		sscanf(line, "%lf %lf %lf %lf %lf %lf %lf", \
 		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \ 
 		&frame->atoms[i].observables[1], &frame->atoms[i].observables[2], &frame->atoms[i].observables[3]);		
-		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) frame->num_mol = frame->atoms[i].mol;
+		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+			{
+			frame->num_mol = frame->atoms[i].mol;
+			}
 		}
 }	
 void read5min( Frame* frame, FILE* df)
@@ -1439,7 +1530,10 @@ void read5min( Frame* frame, FILE* df)
 		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \ 
 		&frame->atoms[i].observables[1], &frame->atoms[i].observables[2], &frame->atoms[i].observables[3], \
 		&frame->atoms[i].observables[4]);		
-		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) frame->num_mol = frame->atoms[i].mol;
+		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+			{
+			frame->num_mol = frame->atoms[i].mol;
+			}
 		}
 }
 void read6min( Frame* frame, FILE* df)
@@ -1453,7 +1547,10 @@ void read6min( Frame* frame, FILE* df)
 		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \ 
 		&frame->atoms[i].observables[1], &frame->atoms[i].observables[2], &frame->atoms[i].observables[3], \
 		&frame->atoms[i].observables[4], &frame->atoms[i].observables[5]);		
-		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) frame->num_mol = frame->atoms[i].mol;
+		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+			{
+			frame->num_mol = frame->atoms[i].mol;
+			}
 		}
 }
 void read7min( Frame* frame, FILE* df)
@@ -1468,7 +1565,10 @@ void read7min( Frame* frame, FILE* df)
 		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \ 
 		&frame->atoms[i].observables[1], &frame->atoms[i].observables[2], &frame->atoms[i].observables[3], \
 		&frame->atoms[i].observables[4], &frame->atoms[i].observables[5], &frame->atoms[i].observables[6]);		
-		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) frame->num_mol = frame->atoms[i].mol;
+		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+			{
+			frame->num_mol = frame->atoms[i].mol;
+			}
 		}
 }
 void read8min( Frame* frame, FILE* df)
@@ -1483,7 +1583,10 @@ void read8min( Frame* frame, FILE* df)
 		&frame->atoms[i].observables[1], &frame->atoms[i].observables[2], &frame->atoms[i].observables[3], \
 		&frame->atoms[i].observables[4], &frame->atoms[i].observables[5], &frame->atoms[i].observables[6], \
 		&frame->atoms[i].observables[7]);		
-		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) frame->num_mol = frame->atoms[i].mol;
+		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+			{
+			frame->num_mol = frame->atoms[i].mol;
+			}
 		}
 }
 void read9min( Frame* frame, FILE* df)
@@ -1498,6 +1601,9 @@ void read9min( Frame* frame, FILE* df)
 		&frame->atoms[i].observables[1], &frame->atoms[i].observables[2], &frame->atoms[i].observables[3], \
 		&frame->atoms[i].observables[4], &frame->atoms[i].observables[5], &frame->atoms[i].observables[6], \
 		&frame->atoms[i].observables[7], &frame->atoms[i].observables[8]);		
-		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) frame->num_mol = frame->atoms[i].mol;
+		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+			{
+			frame->num_mol = frame->atoms[i].mol;
+			}
 		}
 }
