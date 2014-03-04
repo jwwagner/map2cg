@@ -100,16 +100,11 @@
 #include "reading.c"
 
 //function prototype definitions
-void do_simple_map(Controller*, Frame*, Frame*, char*, char*);
-void do_sensitivity_map(Controller*, Frame*, Frame*, char*);
 void do_force_conversion(Controller*, char*, char*);
-void do_bootstrapping(Controller*, char*);
 void do_ii_charge_derivative(Controller*, Frame*, Frame*);
 void do_ij_charge_derivative(Controller*);
-void do_map_to_full(Controller*, Frame*, Frame*, char*, char*);
-void do_sort_frame_by_type(Controller*, Frame*, Frame*, char*, char*);
+void do_sensitivity_map(Controller*, Frame*, Frame*, char*);
 void sensitivity_no_mapping(Controller*, FILE*, FILE*, FILE*, FILE*, FILE*, Frame*, Frame*, Frame*, char*);
-void sensitivity_with_mapping(Controller*, FILE*, FILE*, FILE*, FILE*, FILE*, Frame*, Frame*, Frame*, char*);
 //free 
 void free_allocation(Controller*);
 void free_sensitivity_allocation(Controller*, Frame*, Frame*, Frame*); 
@@ -155,16 +150,12 @@ int main(int argc,char *argv[])
 	printf("finished reading topology_file\n");
 	
 	//determine appropriate controller function
-	if(controls.sensitivity_flag == 0) {
-		do_simple_map(&controls, &frame, &outframe, datfile, outfile);
-	} else if(controls.sensitivity_flag == 1) {
+	if(controls.sensitivity_flag == 1) {
 		do_sensitivity_map(&controls, &frame, &outframe, outfile);	
 	} else if(controls.sensitivity_flag == 2) {
 		do_map_to_full(&controls, &frame, &outframe, datfile, outfile);
 	} else if(controls.sensitivity_flag == 3) {
 		do_force_conversion(&controls, datfile, outfile);
-	} else if(controls.sensitivity_flag == 4) {
-		do_sort_frame_by_type(&controls, &frame, &outframe, datfile, outfile);
 	} else if(controls.sensitivity_flag == 6) {
 		do_ii_charge_derivative(&controls, &frame, &outframe);
 	} else if(controls.sensitivity_flag == 7) {
@@ -183,51 +174,6 @@ int main(int argc,char *argv[])
 	//print out run statistics
 	double final_cputime = clock();
 	printf("total run time was %lf seconds\n", (final_cputime - start_cputime)/( (double) CLOCKS_PER_SEC ) );
-}
-
-//////////////////////////
-///  do_simple_map 	  ///
-/////////////////////////
-
-void do_simple_map(Controller* controls, Frame* inframe, Frame* outframe, char* datfile, char* outfile)
-{
-	int cont_flag = 1;
-	int frame_count = 0;
-	FILE* df;
-	FILE* of;
-
-	//open dump file and toggle output file to reset
-	df = fopen(datfile, "rt");
-	of = fopen(outfile, "w+");
-	fclose(of);
-	
-	//read first frame
-	frame_count++;
-	controls->frame++;
-	read_frame(controls, inframe, df, &cont_flag);
-	
-	while(cont_flag == 1)
-		{
-		//process/map frame
-		process_frame(controls, inframe, outframe);		
-		//output mapped frame and observables
-		output_frame(controls, outframe, outfile);
-		
-		//read next frame or set flag if done
-		frame_count++;
-		controls->frame++;
-		read_frame(controls, inframe, df, &cont_flag);
-		}
-		
-	//close dump file
-	fclose(df);
-	
-	//create top.in file for FM
-	output_topology(controls, outframe);
-	
-	free_inframes(controls, inframe);
-	free_outframes(controls, outframe);
-	free_allocation(controls);
 }
 
 //////////////////////////////////
@@ -276,11 +222,7 @@ void do_sensitivity_map(Controller* controls, Frame* inframe1, Frame* outframe, 
 	frame_count++;
 	controls->frame++;
 	
-	if( controls->sens_map_flag == 0) {
-		sensitivity_no_mapping(controls, df1, df2, lf, gf, of, inframe1, &inframe2, outframe, outfile);
-	} else if( controls->sens_map_flag == 1) {
-		sensitivity_with_mapping(controls, df1, df2, lf, gf, of, inframe1, &inframe2, outframe, outfile);
-	}
+	if( controls->sens_map_flag == 0) sensitivity_no_mapping(controls, df1, df2, lf, gf, of, inframe1, &inframe2, outframe, outfile);
 	
 	//close files for frame, log, and guess reading
 	fclose(df1);
@@ -335,7 +277,6 @@ void do_map_to_full(Controller* control, Frame* inframe, Frame* outframe, char* 
 	}
 
 	//create top.in file for FM
-	//output_topology(control, outframe);
 	
 	//free allocated varaibles	
 	//close read files and output files
@@ -607,68 +548,6 @@ void do_ij_charge_derivative(Controller* control)
 	free(control->prototype);
 }
 
-///////////////////////////////////////
-///		do_sort_frame_by_type		///
-///////////////////////////////////////
-
-void do_sort_frame_by_type(Controller* control, Frame* inframe, Frame* outframe, char* infile, char* outfile)
-{
-	int cont_flag = 1;
-	int frame_count = 0;
-	int i = 0;	
-	FILE* IF = fopen(infile, "rt");
-	
-	if(IF == NULL) {
-		printf("file number %d in list does not exist\n", (i+1) );
-		cont_flag = 0;
-	}
-	
-	//exit if there is an error
-	if( cont_flag == 0 ) {
-		fclose(IF);
-		exit(EXIT_SUCCESS);
-	}
-	
-	//read first frames
-	frame_count++;
-	control->frame++;
-	cont_flag = 1;
-	read_frame(control, inframe, IF, &cont_flag);
-	
-	while(cont_flag == 1) {
-		//process/map frame
-		process_frame_order(control, inframe, outframe);		
-		//output mapped frame and observables
-		output_frame(control, outframe, outfile);
-		
-		//read next frame or set flag if done
-		frame_count++;
-		control->frame++;
-		read_frame(control, inframe, IF, &cont_flag);
-		printf("cont_flag is %d\n", cont_flag);
-	}
-
-	//create top.in file for FM
-	output_topology(control, outframe);
-	
-	//free allocated variables
-	//close read files and output files
-	fclose(IF);
-	for(i = 0; i < control->num_cg_types; i++) {
-		free(inframe->type_list[i]);
-	}
-	free(inframe->type_list);
-	free_inframes(control, inframe);
-	free_outframes(control, outframe );
-	
-	//free prototypes
-	for(i = 0; i < control->num_cg_types; i++) {
-		free(control->prototype[i].num_list);
-	}
-	free(control->prototype);
-	free(control->order);
-}
-
 ///////////////////////////////////////////
 ///		Sensitivity_Slave_Functions		///
 ///////////////////////////////////////////
@@ -692,42 +571,6 @@ void sensitivity_no_mapping(Controller* control, FILE* df1, FILE* df2, FILE* lf,
 		process_no_map_frames_and_log(control, inframe1, inframe2, outframe);
 	
 		if(control->frame == 1)  {
-			printf("to output_topology\n");
-			//create top.in file for FM
-			output_topology(control, outframe);
-		}
-			
-		//output mapped frame and observables
-		output_frame(control, outframe, outfile);
-		
-		//read next frame or set flag if done
-		frame_count++;
-		control->frame++;
-		read_frames_and_log(control, inframe1, inframe2, df1, df2, lf, gf, &cont_flag);
-	}
-}
-
-///////////////////////////////////////////
-///		sensitivity_with_mapping		///
-///////////////////////////////////////////
-
-void sensitivity_with_mapping(Controller* control, FILE* df1, FILE* df2, FILE* lf, FILE* gf, FILE* of, Frame* inframe1, Frame* inframe2, Frame* outframe, char* outfile)
-{
-	//declare variables 
-	int cont_flag = 1;
-	int frame_count = control->frame;
-
-	printf("reading first frame data for sensitivity map\n");
-	read_frames_and_log(control, inframe1, inframe2, df1, df2, lf, gf, &cont_flag);
-	
-	printf("main says num_observables is %d\n", control->num_observables);
-	printf("1st reading reports log value is %lf and guess is %lf\n", control->log_value, control->guess);
-	
-	while(cont_flag == 1) {
-		//process/map frame
-		process_frames_and_log(control, inframe1, inframe2, outframe);
-	
-		if(control->frame == 1) {
 			printf("to output_topology\n");
 			//create top.in file for FM
 			output_topology(control, outframe);
