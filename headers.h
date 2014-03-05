@@ -13,12 +13,6 @@ typedef struct
 
 typedef struct
 {
-	int num;
-	int* num_list;
-} PROTO;
-
-typedef struct
-{
 	int id, mol, type;
 	double q, mass, x, y, z;
 	double* observables;
@@ -58,31 +52,20 @@ typedef struct
 
 typedef struct
 {
-	int num_cg_sites, num_cg_types, num_fg_sites, num_fg_types;
-	int max_to_map, num_frames;
-	//int threshold;
+	int num_cg_sites, num_cg_types, num_frames;
 	PROTO* prototype;
 	
-	int geometry_map_flag, observable_map_flag, num_observables;
+	int num_observables;
 	int output_flag;
 	int sensitivity_flag;
-	int map_style_flag;
-	int debug_flag;
-	int sign_flag;
 	void (*read_function)(Frame*, FILE*);
 	void (*output_function)(Frame*, FILE*);
 	void (*header_function)(FILE*);
 	
-	int num_map;
 	int frame;
-	int* map;
-
 	int log_type;
-	double scaleU1;
-	double scaleU2;
-	double scaleF;
+	double scaleU;
 	int guess_type;
-	int sens_map_flag;
 	double log_value;	//should be able to write this variable out
 	double guess;		//should be able to write this variable out
 	Filenames files;
@@ -97,6 +80,5 @@ typedef struct
 	FILE** outfile;
 	char* name;
 	
-	int* order;
 } Controller;
 #endif

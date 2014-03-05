@@ -1,19 +1,9 @@
 1000	#num CG sites
 1	#num CG types
-6000	#num FG sites
-4	#num FG types
-6	#max to map (FG -> single CG)
-#blank
-6
-1 2 2 2 3 4
 #blank				
-0	#geometry map flag	(0 COM, 1 COG)				
-0	#observable map flag	(0 additive)	
 3	#num observables			
 1	#output flag		(0 all, 1 minimal, 2 value #4, 3 second 3 values)
 1	#sensitivity (0 1dump, 1 2dump+log+guess, 3 force, 5 bootstrap, 6 Qii, 7 Qij)
-#blank								
-0			#mapping style flag #number of types to map #follow with type # on each line
 #blank
 frame02.dat	#1# 1st dump (original file) 
 MeOH_rerun.dat		#1# 2nd dump (rerun data for sensitivity)
@@ -21,8 +11,5 @@ log.lammps	#1# Log file for LAMMPS rerun above
 guess.dat	#1# guess information to match number of frames in other files above
 1			#1# Log type (0 vdW, 1 Columb)
 0			#1# Guess type (0 = 1 column, 1 = log file similar log.lammps file)
-0		  	#1# sensitivity mapping flag (0 = dump files are FG, 1 = dump files are CG)
-1			#1# debug flag (0 = normal, 1 = U/N_CG, 2 = U/temp, 3 = all/temp, 4 = 1+2, 5= 1+3, 6 = U/N_*)
-0			#1# sign flag (-1 = negative, 1 = positive)
 #blank
 #NOTE: -f flag is ignored for sensitivity_flag = 1

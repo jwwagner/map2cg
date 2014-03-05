@@ -6,10 +6,7 @@ void output_frame(Controller*, Frame*, char*);
 void output_frame_all(Controller*, Frame*, char*);
 void output_frame_minimal(Controller*, Frame*, char*);
 void output_frame_minimal_charge(Controller*, Frame*, FILE*);
-void output_frame_4(Controller*, Frame*, char*);
-void output_frame_second3(Controller*, Frame*, char*);
 void output_topology(Controller*, Frame*);
-void output_force_file(Controller*, int, double*, double*, double*, char*);
 void output_charge_frames(Controller*, Frame*);
 //pointer output functions
 void out0full(Frame*, FILE*);
@@ -29,8 +26,6 @@ void output_frame(Controller* control, Frame* outframe, char* outfile)
 		case 1:
 			output_frame_minimal(control, outframe, outfile);
 			break;
-		case 3:
-			output_frame_second3(control, outframe, outfile);
 		default:
 		case 0:
 			output_frame_all(control, outframe, outfile);
@@ -134,40 +129,6 @@ void output_topology(Controller* control, Frame* outframe)
 		fprintf(fp, "%d %d\n", i+1, outframe->type_num[i]);
 	}
 	fprintf(fp, "\n");	
-	fclose(fp);
-}
-
-/////////////////////////////
-///   output_force_file  ///
-////////////////////////////
-
-void output_force_file(Controller* control, int num, double* distance, double* potential, double* force, char* file)
-{
-	//declare variables
-	int i;
-	FILE* fp = fopen(file, "w+");
-	
-	//write header information
-	printf("write header information\n");
-	fprintf(fp, "# Header information on force file\n");
-	fprintf(fp, "\n");
-	fprintf(fp, "%s\n", control->files.guess);
-	
-	printf("checkpoint #1\n");
-	printf("num is %d\n", num);
-	printf("distance[0] is %lf\n", distance[0]);
-	printf("distance[n-1] is %lf\n", distance[num-1] );
-	
-	fprintf(fp, "N %d R %lf %lf\n", num, distance[0], distance[num-1]);
-	fprintf(fp, "\n");
-	
-	//write body information
-	printf("write body information\n");
-	for(i = 0; i < num; i++) {
-		fprintf(fp, "%d %lf %lf %lf\n", (i+1), distance[i], potential[i], force[i]);
-	}
-	
-	printf("close output file\n");
 	fclose(fp);
 }
 

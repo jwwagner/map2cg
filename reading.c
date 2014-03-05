@@ -12,7 +12,6 @@ void read_charge_frames(Controller*, Frame*, int*);
 //slave functions
 void read_logfile(Controller*, FILE*, double*, int*);
 void read_guess(Controller*, FILE*, int*);
-void read_force_file(Controller*, char*, double*, double*,  int*);
 void read_number_in_line(int, char*, int*);
 void read_number_in_line_float(int, char*, double*);
 void check_file_extension(char*, char*);
@@ -116,94 +115,25 @@ void read_topology_file(Controller *control, char* topfile)
     sscanf(line, "%d", &control->num_cg_types);
     
     fgets(line,100,fr);//3
-    sscanf(line, "%d", &control->num_fg_sites);
-    
+     
     fgets(line,100,fr);//4
-    sscanf(line, "%d", &control->num_fg_types);
-	
-    fgets(line,100,fr);//5
-    sscanf(line, "%d", &control->max_to_map);
-    
-    fgets(line,100,fr);//6 
-    
-    //read in prototype information
-    fgets(line,100,fr);//7
-    int* temp_mol = malloc(control->num_cg_types * sizeof(int));
-    int* temp_type = malloc(control->max_to_map * sizeof(int));
-    
-    for(i = 0; i < control->num_cg_types; i++) temp_mol[i] = 0;
-    
-    read_number_in_line(control->num_cg_types, line, temp_mol); 
-	control->prototype = malloc(control->num_cg_types * sizeof(PROTO));
-    for(i = 0; i < control->num_cg_types; i++) {
-    	control->prototype[i].num = temp_mol[i];
-    	control->prototype[i].num_list = malloc(control->prototype[i].num * sizeof(int));
-    	
-    	fgets(line,100,fr);
-    	read_number_in_line(control->prototype[i].num, line, temp_type);
-    	
-    	for(j = 0; j < control->prototype[i].num; j++) {
-    		control->prototype[i].num_list[j] = temp_type[j];
-    	}
-    }
-    free(temp_mol);
-	free(temp_type);
-	
-    fgets(line,100,fr);//8+
-    
-    fgets(line,100,fr);//9+
-    sscanf(line, "%d", &control->geometry_map_flag);
-    
-    fgets(line,100,fr);//10+
-    sscanf(line, "%d", &control->observable_map_flag);
-    
-    fgets(line,100,fr);//11+
     sscanf(line, "%d", &control->num_observables);
     
-    fgets(line,100,fr);//12+
+    fgets(line,100,fr);//5
     sscanf(line, "%d", &control->output_flag);
     
-    fgets(line,100,fr);//13+
+    fgets(line,100,fr);//6
     sscanf(line, "%d", &control->sensitivity_flag);
     
     fgets(line,100,fr);//14+
     
-    fgets(line,100,fr);//15+
-    sscanf(line, "%d", &control->map_style_flag);
-    
     //print information read in file
     printf("num_cg_sites %d\n", control->num_cg_sites);
     printf("num_cg_types %d\n", control->num_cg_types);
-    printf("num_fg_sites %d\n", control->num_fg_sites);
-    printf("num_fg_types %d\n", control->num_fg_types);
-    printf("max_to_map %d\n", control->max_to_map);
     printf("\n");
-    printf("geometry_map_flag %d\n", control->geometry_map_flag);
-    printf("observable_map_flag %d\n", control->observable_map_flag);
     printf("num_observables %d\n", control->num_observables);
     printf("output_flag %d \n", control->output_flag);
-    printf("\n");
     printf("sensitivity_flag %d\n", control->sensitivity_flag);
-    printf("map_style_flag %d\n", control->map_style_flag);
-  
-    if(control->map_style_flag == 0) {
-    	control->num_map = control->num_fg_types;
-    	control->map = malloc(control->num_fg_types * sizeof(int));
-    	for(i=0; i < control->num_fg_types; i++) {
-    		control->map[i] = i+1;
-    	}
-    } else if(control->map_style_flag == 1) {
-    	printf("reading num_map\n");
-    	fgets(line,100,fr);//12
-    	fgets(line,100,fr);
-    	sscanf(line, "%d", &control->num_map);
-    	
-    	control->map = malloc(control->num_map * sizeof(int));
-    	for(i=0; i < control->num_map; i++) {
-    		fgets(line,100,fr);
-    		sscanf(line, "%d", &control->map[i]);
-    	}
-    }
     
     //set function pointer for reading function
     control->header_function = &default_func;
@@ -245,74 +175,15 @@ void read_topology_file(Controller *control, char* topfile)
     	
     	fgets(line,100,fr);//guess type
     	sscanf(line, "%d", &control->guess_type);
-    	
-    	fgets(line,100,fr);//mapping type
-    	sscanf(line, "%d", &control->sens_map_flag);
-    	
-    	//set scaleF and scaleU flags
+    		
+    	//set scaleU value
     	double temp = 300.0 * 0.00198720414; //kcal/(mol K)
-    	control->scaleF = 1.0;    		
-    	control->scaleU1 = temp * (double) control->num_cg_sites;
-    	control->scaleU2 = temp * (double) control->num_cg_sites;
-    	control->sign_flag = -1;
+    	control->scaleU = temp * (double) control->num_cg_sites;
 		
-    	printf("control->num_fg_sites = %d\n", control->num_fg_sites);
     	printf("control->num_cg_sites = %d\n", control->num_cg_sites);
-    	printf("SCALE F = %lf\n", control->scaleF);
-    	printf("SCALE U1 = %lf \n", control->scaleU1);
-    	printf("SCALE U2 = %lf \n", control->scaleU2);
-    } else if(control->sensitivity_flag == 2) {
-    	fgets(line,100,fr);//blank line  
-    	
-    	fgets(line, 100,fr);//charge
-    	sscanf(line,"%lf", &control->scaleU1);
-    	
-    	fgets(line, 100,fr);//mass
-    	sscanf(line,"%lf", &control->scaleU2);
-    	
-    	//reassign reading function pointer 
-    	printf("read minimal setting\n");
-    	switch(control->num_observables) {
-			case 0:
-    			control->read_function = &read0min;
-				break;
-			case 1:
-    			control->read_function = &read1min;
-				break;
-			case 2:
-    			control->read_function = &read2min;
-    			break;
-			case 3:
-    			control->read_function = &read3min;
-				break;
-			case 4:
-				control->read_function = &read4min;
-				break;
-			case 5:
-				control->read_function = &read5min;
-				break;
-			case 6:
-    			control->read_function = &read6min;
-				break;
-			case 7:
-    			control->read_function = &read7min;
-				break;
-			case 8:
-    			control->read_function = &read8min;
-				break;
-			case 9:
-    			control->read_function = &read9min;
-				break;
-			default:
-				printf("number of observables requested %d is not supported \n", control->num_observables);
-				break;
-		}
-    } else if(control->sensitivity_flag == 3) {
-    	fgets(line,100,fr);//blank line
-    	
-    	fgets(line, 100,fr);//1st dump file
-    	sscanf(line,"%s", control->files.guess); //name of tabulated output
-    } else if(control->sensitivity_flag == 6) { //no parameters need for control->sensitivity_flag == 4  
+    	printf("SCALE U = %lf \n", control->scaleU);
+    
+	} else if(control->sensitivity_flag == 6) { //no parameters need for control->sensitivity_flag == 4  
 		//routine specific variables
 		char name[64];
 		double* temp;
@@ -775,47 +646,6 @@ void read_guess(Controller* control, FILE* gf, int* flag)
 			}
 		}
 	}
-}
-
-//////////////////////////////
-///   read_force_file	  ///
-////////////////////////////
-
-void read_force_file(Controller* control, char* file, double* distance, double* force,  int* number_of_lines)
-{	//declare variables
-	int i;
-	int num_lines = 0;
-	int flag = 1;
-	char line[100];
-	FILE* fp = fopen(file, "rt");
-	
-	//determine number of lines in file
-	while(flag == 1) {
-		//check if EOF
-		if( fgets (line, 100, fp) == NULL ) {
-			flag = 0;
-			printf("end of file reached in force file!\n");
-		} else {
-			num_lines++;
-		}
-	}
-	
-	//allocate space
-	distance = malloc( num_lines * sizeof(double));
-	force = malloc( num_lines * sizeof(double));
-	
-	//rewind and read in data
-	printf("do rewind\n");
-	rewind(fp);
-	
-	for(i = 0; i < num_lines; i++) {
-		fgets(line, 100, fp);
-		sscanf(line, "%lf %lf", &distance[i], &force[i]);
-		printf("read at site %d values of distance %lf and force %lf\n", i, distance[i], force[i]);
-	}
-	fclose(fp); //close input file	
-	*number_of_lines = num_lines;
-	printf("*number of lines %d = %d num lines\n", *number_of_lines, num_lines);
 }
 
 //////////////////////////////////

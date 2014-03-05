@@ -45,8 +45,7 @@
 // int	#log type (0 = vdW, 1 = Columb)
 // int  #guess type (0 = 1 column, 1 = log file similar log.lammps file)
 // int  #sensitivity mapping flag (0 = dump files are FG, 1 = dump files are CG)
-// int	#debug_flag (0 = normal, 1 = U/N_cg, 2 = U/temp, 3 = all/temp, 4=1+2, 5=1+3, 6 = N_cg and N_fg, 7 = 2 + 6, 8 = U/temp + U/3Ncg, 9 = U/temp + U/3N_fg and U/3N_cg)
-// int	#sign_flag (-1 = negative, +1 = positive)
+// int	#debug_flag (4= U/(Ncg*temp)
 //ENDIF
 //IF sensitivity flag == 2 (convert "minimal" format to "all" adding filler id, mol, type, q, and mass fields)
 // #blank
@@ -100,7 +99,6 @@
 #include "reading.c"
 
 //function prototype definitions
-void do_force_conversion(Controller*, char*, char*);
 void do_ii_charge_derivative(Controller*, Frame*, Frame*);
 void do_ij_charge_derivative(Controller*);
 void do_sensitivity_map(Controller*, Frame*, Frame*, char*);
@@ -152,10 +150,6 @@ int main(int argc,char *argv[])
 	//determine appropriate controller function
 	if(controls.sensitivity_flag == 1) {
 		do_sensitivity_map(&controls, &frame, &outframe, outfile);	
-	} else if(controls.sensitivity_flag == 2) {
-		do_map_to_full(&controls, &frame, &outframe, datfile, outfile);
-	} else if(controls.sensitivity_flag == 3) {
-		do_force_conversion(&controls, datfile, outfile);
 	} else if(controls.sensitivity_flag == 6) {
 		do_ii_charge_derivative(&controls, &frame, &outframe);
 	} else if(controls.sensitivity_flag == 7) {
@@ -232,152 +226,6 @@ void do_sensitivity_map(Controller* controls, Frame* inframe1, Frame* outframe, 
 	
 	//free allocated varaibles
 	free_sensitivity_allocation(controls, inframe1, &inframe2, outframe); 
-}
-
-/////////////////////////////
-///   do_map_to_full	  ///
-/////////////////////////////
-
-void do_map_to_full(Controller* control, Frame* inframe, Frame* outframe, char* infile, char* outfile)
-{
-	int cont_flag = 1;
-	int frame_count = 0;
-	int i = 0;	
-	FILE* IF = fopen(infile, "rt");
-	
-	if(IF == NULL) {
-		printf("file number %d in list does not exist\n", (i+1) );
-		cont_flag = 0;
-	}
-	
-	//exit if there is an error
-	if( cont_flag == 0 )  {
-		//close files openend and free allocated space
-		fclose(IF);
-		exit(EXIT_SUCCESS);
-	}
-	
-	//read first frames
-	frame_count++;
-	control->frame++;
-	cont_flag = 1;
-	read_frame_minimal(control, inframe, IF, &cont_flag);
-	
-	while(cont_flag == 1) {
-		//process/map frame
-		process_minimal_frame(control, inframe, outframe);
-		//output mapped frame and observables
-		output_frame(control, outframe, outfile);
-		
-		//read next frame or set flag if done
-		frame_count++;
-		control->frame++;
-		read_frame_minimal(control, inframe, IF, &cont_flag);
-		printf("cont_flag is %d\n", cont_flag);
-	}
-
-	//create top.in file for FM
-	
-	//free allocated varaibles	
-	//close read files and output files
-	//also, free frame content 
-	fclose(IF);
-	free_inframes(control, inframe);
-	free_outframes(control, outframe );
-	
-	//free file pointer holders	
-	//free prototypes
-	for(i = 0; i < control->num_cg_types; i++) {
-		free(control->prototype[i].num_list);
-	}
-	free(control->prototype);
-}
-
-//////////////////////////////////
-///   do_force_conversion	  ///
-////////////////////////////////
-
-void do_force_conversion(Controller* control, char* infile, char* outfile)
-{
-	//declare variables
-	double* distance = NULL;
-	double* force = NULL;
-	double* potential = NULL;
-	int num_entries, i;
-
-	//read file to determine number of lines and process input by allocating space
-	//declare variables
-	//int i;
-	int num_lines = 0;
-	int flag = 1;
-	char line[100];
-	FILE* fp = fopen(infile, "rt");
-	
-	//determine number of lines in file
-	while(flag == 1) {
-		if( fgets (line, 100, fp) == NULL ) { //check if EOF
-			flag = 0;
-			printf("end of file reached in force file!\n");
-		} else {
-			num_lines++;
-		}
-	}
-		
-	//allocate space
-	distance = malloc( num_lines * sizeof(double));
-	force = malloc( num_lines * sizeof(double));
-	
-	//rewind and read in data
-	printf("do rewind\n");
-	rewind(fp);
-	
-	for(i = 0; i < num_lines; i++) {
-		fgets(line, 100, fp);
-		sscanf(line, "%lf %lf", &distance[i], &force[i]);
-		printf("read at site %d values of distance %lf and force %lf\n", i, distance[i], force[i]);
-	}
-	
-	//close input file
-	fclose(fp);
-	
-	num_entries = num_lines;
-	printf("number of lines %d = %d num lines\n", num_entries, num_lines);
-	//read_force_file(control, infile, distance, force, &num_entries);	
-	//integrate to get potential
-	potential = malloc(num_entries * sizeof(double));
-	
-	printf("integrate\n");
-	potential[num_entries - 1] = 0.0;
-	for(i = num_entries - 2; i >= 0; i--) {		
-		potential[i] = potential[i+1] + 0.5 * (distance[i + 1] - distance[i]) * (force[i] + force[i + 1]);
-	}
-	
-	//convert ALL units
-	printf("convert units for %d entries\n", num_entries);
-	for(i = 0; i < num_entries; i++) {
-		//distance (nm -> A)
-		distance[i] *= 10.0;
-		
-		//potential (kj/mol -> kcal/mol)
-		potential[i] /= 4.184;
-		
-		//force (kj / mol nm -> kcal/mol A)
-		force[i] /= 41.84;
-	}
-	
-	printf("write_output\n");
-	//write output
-	output_force_file(control, num_entries, distance, potential, force, outfile);
-	
-	//free variables
-	free(distance);
-	free(force);
-	free(potential);
-	//free controller data alloacted
-	for(i = 0; i < control->num_cg_types; i++) {
-		free(control->prototype[i].num_list);
-	}
-	free(control->prototype);
 }
 
 ///////////////////////////////////////////

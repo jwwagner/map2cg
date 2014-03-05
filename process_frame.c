@@ -2,10 +2,9 @@
 
 #include "headers.h"
 
-//original functions
-void process_minimal_frames(Controller*, Frame*, Frame*);
-void process_no_map_frames_and_log(Controller*, Frame*, Frame*, Frame*);
 //sensitivity functions
+void process_minimal_frame(Controller*, Frame*, Frame*);
+void process_no_map_frames_and_log(Controller*, Frame*, Frame*, Frame*);
 void combine_sensitivity_data(Controller*, Frame*, Frame*, Frame*);
 void combine_cg_sensitivity_data(Controller*, Frame*, Frame*, Frame*);
 void process_ij_charge_frames(Controller*, Frame*, Frame*);
@@ -59,8 +58,8 @@ void process_minimal_frame(Controller* control, Frame* inframe, Frame* outframe)
 		outframe->sites[j].id = j;
 		outframe->sites[j].mol = j;
 		outframe->sites[j].type = 1;
-		outframe->sites[j].mass = control->scaleU2;
-		outframe->sites[j].q = control->scaleU1;
+		outframe->sites[j].mass = control->mass_full;
+		outframe->sites[j].q = control->charge_full;
 		outframe->sites[j].x = inframe->atoms[j].x;
 		outframe->sites[j].y = inframe->atoms[j].y;
 		outframe->sites[j].z = inframe->atoms[j].z;
@@ -151,7 +150,7 @@ void combine_sensitivity_data(Controller* control, Frame* inframe1, Frame* infra
 {
 	//declare variables
 	int i, j, k;
-	double scalar = control->log_value / control->scaleU1 - control->guess / control->scaleU2;
+	double scalar = (control->log_value - control->guess) / control->scaleU;
 	int paired[inframe2->num_atoms];
 	for(i = 0; i < inframe2->num_atoms; i++) {
 		paired[i] = 0;
@@ -220,8 +219,7 @@ void combine_sensitivity_data(Controller* control, Frame* inframe1, Frame* infra
 			paired[j] = 1;
 			//combine "observable information"
 			for(k = 0; k < outframe->num_observables; k++) {
-				outframe->sites[i].observables[k] = inframe2->sites[j].observables[k] + ((double)control->sign_flag) * scalar * inframe1->sites[i].observables[k];
-				outframe->sites[i].observables[k] /= control->scaleF;
+				outframe->sites[i].observables[k] = inframe2->sites[j].observables[k] - ( scalar * inframe1->sites[i].observables[k];
 			}
 			break;
 		}
