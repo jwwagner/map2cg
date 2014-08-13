@@ -152,6 +152,7 @@ void read_topology_file(Controller *control, char* topfile)
     control->num_charges = 0;
 	control->num_files = 0;
 	control->num_observables = 0;
+	control->num_truncate = -1;
     
     //read_input
     fgets(line,100,fr);//1
@@ -211,16 +212,13 @@ void read_topology_file(Controller *control, char* topfile)
     
     fgets(line,100,fr);//12+
     sscanf(line, "%d", &control->output_flag);
-    //printf("O10:%s\n", line);
     
     fgets(line,100,fr);//13+
     sscanf(line, "%d", &control->sensitivity_flag);
     
     fgets(line,100,fr);//14+
-    //printf("O11:%s\n", line);
     
     fgets(line,100,fr);//15+
-    //printf("O12:%s\n", line);
     sscanf(line, "%d", &control->map_style_flag);
     
     //print information read in file
@@ -241,6 +239,7 @@ void read_topology_file(Controller *control, char* topfile)
     if(control->map_style_flag == 0)
     	{
     	control->num_map = control->num_fg_types;
+    	control->num_truncate = -1;
     	control->map = malloc(control->num_fg_types * sizeof(int));
     	for(i=0; i < control->num_fg_types; i++)
     		{
@@ -262,6 +261,23 @@ void read_topology_file(Controller *control, char* topfile)
     		fgets(line,100,fr);
     		sscanf(line, "%d", &control->map[i]);
     		//printf("reading %d as %d\n", i, control->map[i]);
+    		}
+    	control->num_truncate = -1;
+    	}
+    else if(control->map_style_flag == 2)
+    	{
+    	printf("reading truncation number\n");
+    	control->num_map = control->num_fg_types;
+    	control->map = malloc(control->num_fg_types * sizeof(int));
+    	for(i=0; i < control->num_fg_types; i++)
+    		{
+    		control->map[i] = i+1;
+    		}
+    	fgets(line,100,fr);
+    	fgets(line,100,fr);
+    	sscanf(line, "%d", &control->num_truncate);
+    	if(control->num_truncate > control->num_fg_sites) {
+    		printf("Truncation number %d is greater than number of FG sites %d\n", control->num_fg_sites, control->num_truncate);
     		}
     	}
     
@@ -459,6 +475,8 @@ void read_topology_file(Controller *control, char* topfile)
     	
     	fgets(line, 100,fr);//1st dump file
     	sscanf(line,"%s", control->files.guess); //name of tabulated output
+    	fgets(line, 100,fr);//units flag
+    	sscanf(line,"%d", &control->units_flag);
     	}
 	
 	//no parameters need for control->sensitivity_flag == 4  	

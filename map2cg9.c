@@ -28,11 +28,13 @@
 // int  #output flag (0 = all, 1 = minimal, 2 = 1 value is #4 observable, 3 = 2nd sets of 3 values)
 // int  #sensitivity flag (0 = only map 1 file, 1 = map 2 files along with log data and guess, 2 = convert "minimal" output to filler "all" output, 3 = convert MSCGFM (1_1.dat) to (tab_ff.dat), 4 = sort CG frame by type, 5 = bootstrapping rearrangement, 6 = II CG charge force derivative, 7 = IJ CG charge force derivative)
 //	 	#this line intentionally left blank
-// int  #mapping style flag (0 = 1:1 molecule entirely, 1 = implicit solvent)
+// int  #mapping style flag (0 = 1:1 molecule entirely, 1 = implicit solvent, 2 = truncate trajectory)
 //IF mapping style flag == 1
 // int	#number of types to map
 // int #type ID's to be mapped
 // ...
+//IF mapping style flag == 2
+// int #number of atoms before truncate
 //ENDIF
 //		#this line intentionally left blank
 //IF sensitivity flag == 1 (Composite FM derivative processing)
@@ -55,6 +57,7 @@
 //IF sensitivity flag == 3 (convert FM output to LAMMPS TABULATED potential)
 // #blank
 // %s name of ID for tab potential (e.g. SENS_MEOH)
+// int #units flag (0 convert from nm and kj/mol to A and kcal/mol, 1 no conversion)
 //ENDIF
 //IF sensitivity flag == 4 (sort by type within frame -- no inputs needed)
 //ENDIF
@@ -202,7 +205,7 @@ int main(int argc,char *argv[])
 	free(outfile);
 	
 	printf("free map information\n");
-	if( (controls.map_style_flag == 0) || (controls.map_style_flag == 1) ) free(controls.map);
+	free(controls.map);
 				
 	//print out run statistics
 	double final_cputime = clock();
@@ -461,19 +464,26 @@ void do_force_conversion(Controller* control, char* infile, char* outfile)
 		}
 	
 	//convert ALL units
-	printf("convert units for %d entries\n", num_entries);
-	for(i = 0; i < num_entries; i++)
+	if(control->units_flag == 0) 
 		{
-		//distance (nm -> A)
-		distance[i] *= 10.0;
+		printf("convert units for %d entries\n", num_entries);
+		for(i = 0; i < num_entries; i++)
+			{
+			//distance (nm -> A)
+			distance[i] *= 10.0;
 		
-		//potential (kj/mol -> kcal/mol)
-		potential[i] /= 4.184;
-		
-		//force (kj / mol nm -> kcal/mol A)
-		force[i] /= 41.84;
+			//potential (kj/mol -> kcal/mol)
+			potential[i] /= 4.184;
+			
+			//force (kj / mol nm -> kcal/mol A)
+			force[i] /= 41.84;
+			}
+		} 
+	else if(control->units_flag == 1) 
+		{
+		printf("no unit conversion applied\n");
 		}
-	
+	 
 	printf("write_output\n");
 	//write output
 	output_force_file(control, num_entries, distance, potential, force, outfile);

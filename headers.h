@@ -74,6 +74,7 @@ typedef struct
 	void (*header_function)(FILE*);
 	
 	int num_map;
+	int num_truncate;
 	int frame;
 	int* map;
 
@@ -96,6 +97,7 @@ typedef struct
 	FILE** file_point;
 	FILE** outfile;
 	char* name;
+	int units_flag;
 	
 	int* order;
 } Controller;
