@@ -9,6 +9,7 @@ void process_frames_and_log(Controller*, Frame*, Frame*, Frame*);
 void process_no_map_frames_and_log(Controller*, Frame*, Frame*, Frame*);
 void map_all_atoms(Controller*, Frame*, Frame*); 
 void map_some_atoms(Controller*, Frame*, Frame*);
+void map_beginning_atoms(Controller*, Frame*, Frame*);
 //sensitivity functions
 void combine_sensitivity_data(Controller*, Frame*, Frame*, Frame*);
 void combine_cg_sensitivity_data(Controller*, Frame*, Frame*, Frame*);
@@ -105,6 +106,10 @@ void process_frame(Controller* control, Frame* inframe, Frame* outframe)
 	else if(control->map_style_flag == 1)
 		{
 		map_some_atoms(control, inframe, outframe);
+		}
+	else if(control->map_style_flag == 2)
+		{
+		map_beginning_atoms(control, inframe, outframe);
 		}
 }
 
@@ -396,6 +401,65 @@ void map_some_atoms(Controller* control, Frame* inframe, Frame* outframe)
 		geometry_mapping(control, inframe, outframe);
 		}
 	outframe->num_mol = mol_count;		
+}
+
+/////////////////////////////
+///   map_beginning_atoms ///
+/////////////////////////////
+
+void map_beginning_atoms(Controller* control, Frame* inframe, Frame* outframe) 
+{
+	int i, j, k, l;
+	int mol_count = 0;
+	int mol_val;
+	int site_count;
+	int key[inframe->num_mol];
+	
+	//intialize key
+	for(i = 0; i < inframe->num_mol; i++)
+		{
+		key[i] = -1;
+		}
+
+	if(control->observable_map_flag == 0) //sum observables
+		{
+		//process and sort all FG atoms
+		for(i = 0; i < inframe->num_atoms; i++)
+			{
+			//check if atom is within truncation range
+			if(inframe->atoms[i].id > control->num_truncate) continue;
+			
+			//check to see if mol key is set
+			mol_val = inframe->atoms[i].mol - 1;
+			if(key[mol_val] == -1)
+				{
+				key[mol_val] = mol_count;
+				outframe->sites[key[mol_val]].id = key[mol_val] + 1;
+				outframe->sites[key[mol_val]].mol = key[mol_val] + 1;
+				mol_count++;
+				}												
+		
+			//transfer information to CG site
+			site_count = outframe->sites[ key[mol_val] ].num_in_site;		 
+			outframe->sites[key[mol_val]].coord[site_count].x = inframe->atoms[i].x;
+			outframe->sites[key[mol_val]].coord[site_count].y = inframe->atoms[i].y;
+			outframe->sites[key[mol_val]].coord[site_count].z = inframe->atoms[i].z;
+			outframe->sites[key[mol_val]].coord[site_count].mass = inframe->atoms[i].mass;
+			outframe->sites[key[mol_val]].coord[site_count].type = inframe->atoms[i].type;
+			outframe->sites[key[mol_val]].q += inframe->atoms[i].q;
+			outframe->sites[ key[mol_val] ].num_in_site++;
+
+			determine_type(control, inframe, outframe, &i, &key[mol_val]);
+	
+			for(j = 0; j < outframe->num_observables; j++)
+				{
+				outframe->sites[key[mol_val]].observables[j] += inframe->atoms[i].observables[j];
+				}
+			}
+				
+		geometry_mapping(control, inframe, outframe);
+		}
+	outframe->num_mol = mol_count;	
 }
 
 //////////////////////////////////////
