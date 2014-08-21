@@ -239,8 +239,15 @@ void do_simple_map(Controller* controls, Frame* inframe, Frame* outframe, char* 
 		//process/map frame
 		process_frame(controls, inframe, outframe);		
 		//output mapped frame and observables
-		output_frame(controls, outframe, outfile);
-		
+		if(controls->map_style_flag == 2) {
+			of = fopen(outfile, "a+");
+			(*controls->header_function)(of);			
+			(*controls->output_function)(outframe, of);
+			fclose(of);
+		}
+		else {
+			output_frame(controls, outframe, outfile);
+		}
 		//read next frame or set flag if done
 		frame_count++;
 		controls->frame++;

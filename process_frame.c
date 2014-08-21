@@ -448,7 +448,7 @@ void map_beginning_atoms(Controller* control, Frame* inframe, Frame* outframe)
 			outframe->sites[key[mol_val]].coord[site_count].type = inframe->atoms[i].type;
 			outframe->sites[key[mol_val]].q += inframe->atoms[i].q;
 			outframe->sites[ key[mol_val] ].num_in_site++;
-
+			
 			determine_type(control, inframe, outframe, &i, &key[mol_val]);
 	
 			for(j = 0; j < outframe->num_observables; j++)
@@ -774,19 +774,16 @@ void process_frame_order(Controller* control, Frame* inframe, Frame* outframe)
 		int type_val = control->num_cg_types;
 		for(j = 0; j < control->num_cg_types; j++)
 			{
-			//printf("TRY:: i=%d, inframe->type[%d] = %d\n", i, j, inframe->type[j]);
 			if (inframe->type[j] <= type_val) //get the lowest type value as "low water mark"
 				{
 				if(inframe->type[j] > prev) //exclude the same type from matching repeatedly
 					{
-					//printf("WIN:: prev %d and type_val %d\n", prev, type_val);
 					type = j;
 					type_val = inframe->type[j];
 					}
 				}
 			}
 		control->order[i] = type_val;
-		//printf("ORDER:: control->order[%d] = %d\n", i, type);
 		prev = inframe->type[type];
 		}
 	
@@ -798,7 +795,6 @@ void process_frame_order(Controller* control, Frame* inframe, Frame* outframe)
 		for(j = 0; j < control->num_cg_types; j++)
 			{
 			//get type index
-			//printf("type match:: inframe->type[%d] %d == %d control->order[%d]\n", j, inframe->type[j], control->order[i], i);
 			if( inframe->type[j] == control->order[i] )
 				{
 				prev = j;
@@ -808,7 +804,6 @@ void process_frame_order(Controller* control, Frame* inframe, Frame* outframe)
 			{
 			printf("ERROR: NO TYPE MATCH FOUND FOR ORDER #%d TYPE %d\n", i, inframe->type[i]);
 			}
-		//printf("COPY TYPE %d with num %d to match %d\n", i+1, prev, control->order[i]);
 		outframe->type[i] = inframe->type[ prev ];
 		outframe->type_num[i] = inframe->type_num[ prev ];
 		
@@ -816,7 +811,6 @@ void process_frame_order(Controller* control, Frame* inframe, Frame* outframe)
 		for(j = 0; j < inframe->type_num[ prev ]; j++)
 			{
 			id = inframe->type_list[ prev ][j];
-			//printf("id %d from prev %d", id, prev);
 			outframe->sites[spot].num_in_site = 1;
 			outframe->sites[spot].id = spot+1; //inframe->atoms[id].id;
 			outframe->sites[spot].mol = spot+1; //inframe->atoms[id].mol;
@@ -830,7 +824,6 @@ void process_frame_order(Controller* control, Frame* inframe, Frame* outframe)
 				{
 				outframe->sites[spot].observables[l] = inframe->atoms[id].observables[l];
 				}
-			//printf("\t::CG q %lf\tfx %lf\tSPOT = %d\n", outframe->sites[spot].q, outframe->sites[spot].observables[0], spot);
 			spot++;
 			}
 		}
@@ -1269,7 +1262,6 @@ void determine_type(Controller* control, Frame* inframe, Frame* outframe, int* c
 				if(outframe->sites[*map].matches[j] == 1)
 					{
 					outframe->sites[*map].type = j + 1;
-					//printf("MATCH: fg = %d cg = %d\n", outframe->sites[*map].coord[0].type, outframe->sites[*map].type);
 					//if( (j + 1) > outframe->type_count) outframe->type_count = j + 1;
 					outframe->type_num[j] += 1;
 					

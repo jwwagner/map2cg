@@ -23,6 +23,26 @@ void out6full(Frame*, FILE*);
 void out7full(Frame*, FILE*);
 void out8full(Frame*, FILE*);
 void out9full(Frame*, FILE*);
+void out0min(Frame*, FILE*);
+void out1min(Frame*, FILE*);
+void out2min(Frame*, FILE*);
+void out3min(Frame*, FILE*);
+void out4min(Frame*, FILE*);
+void out5min(Frame*, FILE*);
+void out6min(Frame*, FILE*);
+void out7min(Frame*, FILE*);
+void out8min(Frame*, FILE*);
+void out9min(Frame*, FILE*);
+void out0minid(Frame*, FILE*);
+void out1minid(Frame*, FILE*);
+void out2minid(Frame*, FILE*);
+void out3minid(Frame*, FILE*);
+void out4minid(Frame*, FILE*);
+void out5minid(Frame*, FILE*);
+void out6minid(Frame*, FILE*);
+void out7minid(Frame*, FILE*);
+void out8minid(Frame*, FILE*);
+void out9minid(Frame*, FILE*);
 void default_func(FILE* of);
 void header0(FILE*);
 void header1(FILE*);
@@ -30,6 +50,20 @@ void header3(FILE*);
 void header4(FILE*);
 void header6(FILE*);
 void header7(FILE*);
+void header2(FILE*);
+void header5(FILE*);
+void header8(FILE*);
+void header9(FILE*);
+void header0id(FILE*);
+void header1id(FILE*);
+void header3id(FILE*);
+void header4id(FILE*);
+void header6id(FILE*);
+void header7id(FILE*);
+void header2id(FILE*);
+void header5id(FILE*);
+void header8id(FILE*);
+void header9id(FILE*);
 void header0full(FILE*);
 void header1full(FILE*);
 void header3full(FILE*);
@@ -462,6 +496,247 @@ void out9full(Frame* outframe, FILE* of)
 		outframe->sites[i].observables[7], outframe->sites[i].observables[8]);
 		}
 }
+void out0min(Frame* outframe, FILE* of)
+{
+	int i;
+	for( i = 0; i < outframe->num_atoms; i++)
+		{	
+		fprintf(of, "%d %lf %lf %lf %lf %lf\n", outframe->sites[i].id, \
+		outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
+		outframe->sites[i].y, outframe->sites[i].z);
+		}
+}
+void out1min(Frame* outframe, FILE* of)
+{
+	int i;
+	for( i = 0; i < outframe->num_atoms; i++)
+		{	
+		fprintf(of, "%d %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, \
+		outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
+		outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0]);
+		}
+}
+void out2min(Frame* outframe, FILE* of)
+{
+	int i;
+	for( i = 0; i < outframe->num_atoms; i++)
+		{	
+		fprintf(of, "%d %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, \
+		outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
+		outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+		outframe->sites[i].observables[1]);
+		}
+}
+void out3min(Frame* outframe, FILE* of)
+{
+	int i;
+	for( i = 0; i < outframe->num_atoms; i++)
+		{	
+		fprintf(of, "%d %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, \
+		outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
+		outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+		outframe->sites[i].observables[1], outframe->sites[i].observables[2]);
+		}
+}
+void out4min(Frame* outframe, FILE* of)
+{
+	int i;
+	for( i = 0; i < outframe->num_atoms; i++)
+		{	
+		fprintf(of, "%d %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, \
+		outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
+		outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+		outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
+		outframe->sites[i].observables[3]);
+		}
+}	
+void out5min(Frame* outframe, FILE* of)
+{
+	int i;
+	for( i = 0; i < outframe->num_atoms; i++)
+		{	
+		fprintf(of, "%d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, \
+		outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
+		outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+		outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
+		outframe->sites[i].observables[3], outframe->sites[i].observables[4]);
+		}
+}
+void out6min(Frame* outframe, FILE* of)
+{
+	int i;
+	for( i = 0; i < outframe->num_atoms; i++)
+		{	
+		fprintf(of, "%d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, \
+		outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
+		outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+		outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
+		outframe->sites[i].observables[3], outframe->sites[i].observables[4], \
+		outframe->sites[i].observables[5]);
+		}
+}
+void out7min(Frame* outframe, FILE* of)
+{
+	int i;
+	for( i = 0; i < outframe->num_atoms; i++)
+		{	
+		fprintf(of, "%d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, \
+		outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
+		outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+		outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
+		outframe->sites[i].observables[3], outframe->sites[i].observables[4], \
+		outframe->sites[i].observables[5], outframe->sites[i].observables[6]);
+		}
+}
+void out8min(Frame* outframe, FILE* of)
+{
+	int i;
+	for( i = 0; i < outframe->num_atoms; i++)
+		{	
+		fprintf(of, "%d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, \
+		outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
+		outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+		outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
+		outframe->sites[i].observables[3], outframe->sites[i].observables[4], \
+		outframe->sites[i].observables[5], outframe->sites[i].observables[6], \
+		outframe->sites[i].observables[7]);
+		}
+}
+void out9min(Frame* outframe, FILE* of)
+{
+	int i;
+	for( i = 0; i < outframe->num_atoms; i++)
+		{	
+		fprintf(of, "%d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, \
+		outframe->sites[i].q, outframe->sites[i].mass, outframe->sites[i].x, \
+		outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+		outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
+		outframe->sites[i].observables[3], outframe->sites[i].observables[4], \
+		outframe->sites[i].observables[5], outframe->sites[i].observables[6], \
+		outframe->sites[i].observables[7], outframe->sites[i].observables[8]);
+		}
+}
+void out0minid(Frame* outframe, FILE* of)
+{
+	int i;
+	for( i = 0; i < outframe->num_atoms; i++)
+		{	
+		fprintf(of, "%d %lf %lf %lf\n", outframe->sites[i].id, \
+		outframe->sites[i].x, \
+		outframe->sites[i].y, outframe->sites[i].z);
+		}
+}
+void out1minid(Frame* outframe, FILE* of)
+{
+	int i;
+	for( i = 0; i < outframe->num_atoms; i++)
+		{	
+		fprintf(of, "%d %lf %lf %lf %lf\n", outframe->sites[i].id, \
+		outframe->sites[i].x, \
+		outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0]);
+		}
+}
+void out2minid(Frame* outframe, FILE* of)
+{
+	int i;
+	for( i = 0; i < outframe->num_atoms; i++)
+		{	
+		fprintf(of, "%d %lf %lf %lf %lf %lf\n", outframe->sites[i].id, \
+		outframe->sites[i].x, \
+		outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+		outframe->sites[i].observables[1]);
+		}
+}
+void out3minid(Frame* outframe, FILE* of)
+{
+	//printf("out3minid\n");
+	int i;
+	for( i = 0; i < outframe->num_atoms; i++)
+		{	
+		fprintf(of, "%d %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, \
+		outframe->sites[i].x, \
+		outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+		outframe->sites[i].observables[1], outframe->sites[i].observables[2]);
+		}
+}
+void out4minid(Frame* outframe, FILE* of)
+{
+	int i;
+	for( i = 0; i < outframe->num_atoms; i++)
+		{	
+		fprintf(of, "%d %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, \
+		outframe->sites[i].x, \
+		outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+		outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
+		outframe->sites[i].observables[3]);
+		}
+}	
+void out5minid(Frame* outframe, FILE* of)
+{
+	int i;
+	for( i = 0; i < outframe->num_atoms; i++)
+		{	
+		fprintf(of, "%d %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, \
+		outframe->sites[i].x, \
+		outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+		outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
+		outframe->sites[i].observables[3], outframe->sites[i].observables[4]);
+		}
+}
+void out6minid(Frame* outframe, FILE* of)
+{
+	int i;
+	for( i = 0; i < outframe->num_atoms; i++)
+		{	
+		fprintf(of, "%d %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, \
+		outframe->sites[i].x, \
+		outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+		outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
+		outframe->sites[i].observables[3], outframe->sites[i].observables[4], \
+		outframe->sites[i].observables[5]);
+		}
+}
+void out7minid(Frame* outframe, FILE* of)
+{
+	int i;
+	for( i = 0; i < outframe->num_atoms; i++)
+		{	
+		fprintf(of, "%d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, \
+		outframe->sites[i].x, \
+		outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+		outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
+		outframe->sites[i].observables[3], outframe->sites[i].observables[4], \
+		outframe->sites[i].observables[5], outframe->sites[i].observables[6]);
+		}
+}
+void out8minid(Frame* outframe, FILE* of)
+{
+	int i;
+	for( i = 0; i < outframe->num_atoms; i++)
+		{	
+		fprintf(of, "%d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, \
+		outframe->sites[i].x, \
+		outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+		outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
+		outframe->sites[i].observables[3], outframe->sites[i].observables[4], \
+		outframe->sites[i].observables[5], outframe->sites[i].observables[6], \
+		outframe->sites[i].observables[7]);
+		}
+}
+void out9minid(Frame* outframe, FILE* of)
+{
+	int i;
+	for( i = 0; i < outframe->num_atoms; i++)
+		{	
+		fprintf(of, "%d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", outframe->sites[i].id, \
+		outframe->sites[i].x, \
+		outframe->sites[i].y, outframe->sites[i].z, outframe->sites[i].observables[0], \
+		outframe->sites[i].observables[1], outframe->sites[i].observables[2], \
+		outframe->sites[i].observables[3], outframe->sites[i].observables[4], \
+		outframe->sites[i].observables[5], outframe->sites[i].observables[6], \
+		outframe->sites[i].observables[7], outframe->sites[i].observables[8]);
+		}
+}
 void default_func(FILE* of)
 {
 	printf("output number of observables not supported so giving generic 3 observable header\n");
@@ -490,6 +765,62 @@ void header6(FILE* of)
 void header7(FILE* of)
 {
 	fprintf(of, "ITEM: ATOMS x y z fx fy fz dfx dfy dfz dU \n");
+}
+void header2(FILE* of)
+{
+	fprintf(of, "ITEM: ATOMS x y z fx fy \n");
+}
+void header5(FILE* of)
+{
+	fprintf(of, "ITEM: ATOMS x y z U O \n");
+}
+void header8(FILE* of)
+{
+	fprintf(of, "ITEM: ATOMS x y z fx fy fz dfx dfy dfz U O \n");
+}
+void header9(FILE* of)
+{
+	fprintf(of, "ITEM: ATOMS x y z fx fy fz dfx dfy dfz qfx qfy qfz \n");
+}
+void header0id(FILE* of)
+{
+	fprintf(of, "ITEM: ATOMS id x y z \n");
+}
+void header1id(FILE* of)
+{
+	fprintf(of, "ITEM: ATOMS id x y z U \n");
+}
+void header3id(FILE* of)
+{
+	fprintf(of, "ITEM: ATOMS id x y z fx fy fz \n");
+}
+void header4id(FILE* of)
+{
+	fprintf(of, "ITEM: ATOMS id x y z dfx dfy dfz dU \n");
+}
+void header6id(FILE* of)
+{
+	fprintf(of, "ITEM: ATOMS id x y z fx fy fz dfx dfy dfz \n");
+}
+void header7id(FILE* of)
+{
+	fprintf(of, "ITEM: ATOMS id x y z fx fy fz dfx dfy dfz dU \n");
+}
+void header2id(FILE* of)
+{
+	fprintf(of, "ITEM: ATOMS id x y z fx fy \n");
+}
+void header5id(FILE* of)
+{
+	fprintf(of, "ITEM: ATOMS id x y z U O \n");
+}
+void header8id(FILE* of)
+{
+	fprintf(of, "ITEM: ATOMS id x y z fx fy fz dfx dfy dfz U O \n");
+}
+void header9id(FILE* of)
+{
+	fprintf(of, "ITEM: ATOMS id x y z fx fy fz dfx dfy dfz qfx qfy qfz \n");
 }
 void header0full(FILE* of)
 {

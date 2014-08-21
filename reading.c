@@ -42,6 +42,16 @@ void read6min(Frame*, FILE*);
 void read7min(Frame*, FILE*);
 void read8min(Frame*, FILE*);
 void read9min(Frame*, FILE*);
+void read0minid(Frame*, FILE*);
+void read1minid(Frame*, FILE*);
+void read2minid(Frame*, FILE*);
+void read3minid(Frame*, FILE*);
+void read4minid(Frame*, FILE*);
+void read5minid(Frame*, FILE*);
+void read6minid(Frame*, FILE*);
+void read7minid(Frame*, FILE*);
+void read8minid(Frame*, FILE*);
+void read9minid(Frame*, FILE*);
 //////////////////////////////////////////
 ///   parse_command_line_arguments	  ///
 ////////////////////////////////////////
@@ -260,7 +270,6 @@ void read_topology_file(Controller *control, char* topfile)
     		{
     		fgets(line,100,fr);
     		sscanf(line, "%d", &control->map[i]);
-    		//printf("reading %d as %d\n", i, control->map[i]);
     		}
     	control->num_truncate = -1;
     	}
@@ -330,11 +339,60 @@ void read_topology_file(Controller *control, char* topfile)
     		control->read_function = &read9full;
     		control->output_function = &out9full;
 			break;
+		case -1:
+    		control->read_function = &read1minid;
+    		control->output_function = &out1minid;
+    		control->header_function = &header1id;
+			break;
+		case -2:
+			control->read_function = &read2minid;
+    		control->output_function = &out2minid;
+    		control->header_function = &header2id;
+    		break;
+		case -3:
+			printf("setting output function pointers to minid values for -3\n");
+			control->read_function = &read3minid;
+    		control->output_function = &out3minid;
+    		control->header_function = &header3id;
+    		break;
+		case -4:
+			control->read_function = &read4minid;
+    		control->output_function = &out4minid;
+    		control->header_function = &header4id;
+    		break;
+		case -5:
+			control->read_function = &read5minid;
+    		control->output_function = &out5minid;
+    		control->header_function = &header5id;
+    		break;
+		case -6:
+			control->read_function = &read6minid;
+    		control->output_function = &out6minid;
+    		control->header_function = &header6id;
+    		break; 
+		case -7:
+			control->read_function = &read7minid;
+    		control->output_function = &out7minid;
+    		control->header_function = &header7id;
+    		break;
+		case -8:
+			control->read_function = &read8minid;
+    		control->output_function = &out8min;
+    		control->header_function = &header8id;
+    		break;
+		case -9:
+			control->read_function = &read9minid;
+    		control->output_function = &out9minid;
+    		control->header_function = &header9id;
+    		break;
+    		
 		default:
 			printf("number of observables requested %d is not supported \n", control->num_observables);
 			break;
 		}
     	
+    control->num_observables = abs(control->num_observables);
+    
     if(control->sensitivity_flag == 1)
     	{
     	control->debug_flag = 0;
@@ -585,7 +643,6 @@ void read_topology_file(Controller *control, char* topfile)
 
 void read_frame(Controller* control, Frame* frame, FILE* df, int* flag)
 {
-	//printf("in read\n");
 	int i=0;
 	int j=0;
 	char line[100];
@@ -633,7 +690,6 @@ void read_frame(Controller* control, Frame* frame, FILE* df, int* flag)
     	{
     	if(frame->num_atoms == 0)	//do initial allocation
     		{
-    		//printf("intial allocation of atoms \n");
     		if(i != control->num_fg_sites) 
     			{
     				if(control->sens_map_flag == 1) 
@@ -731,7 +787,6 @@ void read_frame_minimal(Controller* control, Frame* frame, FILE* df, int* flag)
 			return;
 		}
 	
-	//printf("passed EOF and format test\n");
 	//so, we assume content is correct now for next frame and begin reading
 	//read in timestep
 	fgets(line,100,df); //2
@@ -835,7 +890,6 @@ void read_frames_and_log(Controller* control, Frame* inframe1, Frame* inframe2, 
 		return;
 		}
 		
-	printf("1:inframe1->num_atoms = %d and inframe2->num_atoms = %d\n", inframe1->num_atoms, inframe2->num_atoms);
 	read_logfile(control, lf, &double_val, &test_log);
 	control->log_value = double_val;
 	
@@ -854,7 +908,6 @@ void read_frames_and_log(Controller* control, Frame* inframe1, Frame* inframe2, 
 	
 	//do test on flags to determine composite (0 in any is a fail)
 	*flag = test1 && test2 && test_log && guess_read;	
-	printf("2:inframe1->num_atoms = %d and inframe2->num_atoms = %d\n", inframe1->num_atoms, inframe2->num_atoms);
 }
 
   ////////////////////////////////
@@ -1469,12 +1522,19 @@ void read0min( Frame* frame, FILE* df)
 		fgets(line,100,df);
 		sscanf(line, "%lf %lf %lf", \
 		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z);		
+		
+		frame->atoms[i].id = i;
+		frame->atoms[i].mol = frame->atoms[i].id;
+		frame->atoms[i].type = 1;
+		frame->atoms[i].mass = 1.0;		
+		frame->atoms[i].q = 0.0;
 		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
 			{
 			frame->num_mol = frame->atoms[i].mol;
 			}
 		}
 }	
+
 void read1min( Frame* frame, FILE* df)
 {
 	int i;
@@ -1485,6 +1545,12 @@ void read1min( Frame* frame, FILE* df)
 		fgets(line,100,df);
 		sscanf(line, "%lf %lf %lf %lf", \
 		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0]);		
+		
+		frame->atoms[i].id = i;
+		frame->atoms[i].mol = frame->atoms[i].id;
+		frame->atoms[i].type = 1;;
+		frame->atoms[i].mass = 1.0;		
+		frame->atoms[i].q = 0.0;
 		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
 			{
 			frame->num_mol = frame->atoms[i].mol;
@@ -1502,6 +1568,12 @@ void read2min( Frame* frame, FILE* df)
 		sscanf(line, "%lf %lf %lf %lf %lf", \ 
 		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \
 		&frame->atoms[i].observables[1]);		
+		
+		frame->atoms[i].id = i;
+		frame->atoms[i].mol = frame->atoms[i].id;
+		frame->atoms[i].type = 1;;
+		frame->atoms[i].mass = 1.0;		
+		frame->atoms[i].q = 0.0;		
 		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
 			{
 			frame->num_mol = frame->atoms[i].mol;
@@ -1516,9 +1588,15 @@ void read3min( Frame* frame, FILE* df)
 		{
 		frame->atoms[i].id = i;
 		fgets(line,100,df);
-		sscanf(line, "%lf %lf %lf %lf %lf %lf", \
+		sscanf(line, "%lf %lf %lf %lf %lf %lf",  \
 		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \ 
 		&frame->atoms[i].observables[1], &frame->atoms[i].observables[2]);		
+		
+		frame->atoms[i].id = i;
+		frame->atoms[i].mol = frame->atoms[i].id;
+		frame->atoms[i].type = 1;;
+		frame->atoms[i].mass = 1.0;		
+		frame->atoms[i].q = 0.0;
 		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
 			{
 			frame->num_mol = frame->atoms[i].mol;
@@ -1533,9 +1611,15 @@ void read4min( Frame* frame, FILE* df)
 		{
 		frame->atoms[i].id = i;
 		fgets(line,100,df);
-		sscanf(line, "%lf %lf %lf %lf %lf %lf %lf", \
+		sscanf(line, "%lf %lf %lf %lf %lf %lf %lf",  \
 		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \ 
 		&frame->atoms[i].observables[1], &frame->atoms[i].observables[2], &frame->atoms[i].observables[3]);		
+		
+		frame->atoms[i].id = i;
+		frame->atoms[i].mol = frame->atoms[i].id;
+		frame->atoms[i].type = 1;;
+		frame->atoms[i].mass = 1.0;		
+		frame->atoms[i].q = 0.0;
 		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
 			{
 			frame->num_mol = frame->atoms[i].mol;
@@ -1554,6 +1638,12 @@ void read5min( Frame* frame, FILE* df)
 		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \ 
 		&frame->atoms[i].observables[1], &frame->atoms[i].observables[2], &frame->atoms[i].observables[3], \
 		&frame->atoms[i].observables[4]);		
+		
+		frame->atoms[i].id = i;
+		frame->atoms[i].mol = frame->atoms[i].id;
+		frame->atoms[i].type = 1;;
+		frame->atoms[i].mass = 1.0;		
+		frame->atoms[i].q = 0.0;
 		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
 			{
 			frame->num_mol = frame->atoms[i].mol;
@@ -1568,10 +1658,16 @@ void read6min( Frame* frame, FILE* df)
 		{
 		frame->atoms[i].id = i;
 		fgets(line,100,df);
-		sscanf(line, "%lf %lf %lf %lf %lf %lf %lf %lf %lf", \
+		sscanf(line, "%lf %lf %lf %lf %lf %lf %lf %lf %lf",  \
 		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \ 
 		&frame->atoms[i].observables[1], &frame->atoms[i].observables[2], &frame->atoms[i].observables[3], \
 		&frame->atoms[i].observables[4], &frame->atoms[i].observables[5]);		
+		
+		frame->atoms[i].id = i;
+		frame->atoms[i].mol = frame->atoms[i].id;
+		frame->atoms[i].type = 1;;
+		frame->atoms[i].mass = 1.0;		
+		frame->atoms[i].q = 0.0;
 		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
 			{
 			frame->num_mol = frame->atoms[i].mol;
@@ -1586,11 +1682,17 @@ void read7min( Frame* frame, FILE* df)
 		{
 		frame->atoms[i].id = i;
 		fgets(line,100,df);
-		sscanf(line, "%d %d %d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf", &frame->atoms[i].id, \
-		&frame->atoms[i].mol, &frame->atoms[i].type, &frame->atoms[i].q, &frame->atoms[i].mass, \ 
+		sscanf(line, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf", \
+		&frame->atoms[i].q, &frame->atoms[i].mass, \ 
 		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \ 
 		&frame->atoms[i].observables[1], &frame->atoms[i].observables[2], &frame->atoms[i].observables[3], \
 		&frame->atoms[i].observables[4], &frame->atoms[i].observables[5], &frame->atoms[i].observables[6]);		
+		
+		frame->atoms[i].id = i;
+		frame->atoms[i].mol = frame->atoms[i].id;
+		frame->atoms[i].type = 1;;
+		frame->atoms[i].mass = 1.0;		
+		frame->atoms[i].q = 0.0;
 		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
 			{
 			frame->num_mol = frame->atoms[i].mol;
@@ -1605,11 +1707,17 @@ void read8min( Frame* frame, FILE* df)
 		{
 		frame->atoms[i].id = i;
 		fgets(line,100,df);
-		sscanf(line, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf", \
+		sscanf(line, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",  \
 		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \ 
 		&frame->atoms[i].observables[1], &frame->atoms[i].observables[2], &frame->atoms[i].observables[3], \
 		&frame->atoms[i].observables[4], &frame->atoms[i].observables[5], &frame->atoms[i].observables[6], \
 		&frame->atoms[i].observables[7]);		
+		
+		frame->atoms[i].id = i;
+		frame->atoms[i].mol = frame->atoms[i].id;
+		frame->atoms[i].type = 1;;
+		frame->atoms[i].mass = 1.0;		
+		frame->atoms[i].q = 0.0;
 		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
 			{
 			frame->num_mol = frame->atoms[i].mol;
@@ -1629,6 +1737,240 @@ void read9min( Frame* frame, FILE* df)
 		&frame->atoms[i].observables[1], &frame->atoms[i].observables[2], &frame->atoms[i].observables[3], \
 		&frame->atoms[i].observables[4], &frame->atoms[i].observables[5], &frame->atoms[i].observables[6], \
 		&frame->atoms[i].observables[7], &frame->atoms[i].observables[8]);		
+		
+		frame->atoms[i].id = i;
+		frame->atoms[i].mol = frame->atoms[i].id;
+		frame->atoms[i].type = 1;;
+		frame->atoms[i].mass = 1.0;		
+		frame->atoms[i].q = 0.0;
+		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+			{
+			frame->num_mol = frame->atoms[i].mol;
+			}
+		}
+}
+
+void read0minid( Frame* frame, FILE* df)
+{
+	int i;
+	char line[100];
+	for(i=0; i < frame->num_atoms; i++)
+		{
+		frame->atoms[i].id = i;		
+		fgets(line,100,df);
+		sscanf(line, "%d %lf %lf %lf", &frame->atoms[i].id, \
+		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z);		
+		
+		frame->atoms[i].mol = frame->atoms[i].id;
+		frame->atoms[i].type = 1;
+		frame->atoms[i].mass = 1.0;		
+		frame->atoms[i].q = 0.0;
+		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+			{
+			frame->num_mol = frame->atoms[i].mol;
+			}
+		}
+}	
+
+void read1minid( Frame* frame, FILE* df)
+{
+	int i;
+	char line[100];
+	for(i=0; i < frame->num_atoms; i++)
+		{
+		frame->atoms[i].id = i;
+		fgets(line,100,df);
+		sscanf(line, "%d %lf %lf %lf %lf",  &frame->atoms[i].id, \
+		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0]);		
+		
+		frame->atoms[i].mol = frame->atoms[i].id;
+		frame->atoms[i].type = 1;;
+		frame->atoms[i].mass = 1.0;		
+		frame->atoms[i].q = 0.0;
+		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+			{
+			frame->num_mol = frame->atoms[i].mol;
+			}
+		}
+}
+void read2minid( Frame* frame, FILE* df)
+{
+	int i;
+	char line[100];
+	for(i=0; i < frame->num_atoms; i++)
+		{
+		frame->atoms[i].id = i;
+		fgets(line,100,df);
+		sscanf(line, "%d %lf %lf %lf %lf %lf",  &frame->atoms[i].id, \ 
+		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \
+		&frame->atoms[i].observables[1]);		
+		
+		frame->atoms[i].mol = frame->atoms[i].id;
+		frame->atoms[i].type = 1;;
+		frame->atoms[i].mass = 1.0;		
+		frame->atoms[i].q = 0.0;		
+		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+			{
+			frame->num_mol = frame->atoms[i].mol;
+			}
+		}
+}	
+void read3minid( Frame* frame, FILE* df)
+{
+	int i;
+	char line[100];
+	for(i=0; i < frame->num_atoms; i++)
+		{
+		frame->atoms[i].id = i;
+		fgets(line,100,df);
+		sscanf(line, "%d %lf %lf %lf %lf %lf %lf",  &frame->atoms[i].id, \
+		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \ 
+		&frame->atoms[i].observables[1], &frame->atoms[i].observables[2]);		
+		
+		frame->atoms[i].mol = frame->atoms[i].id;
+		frame->atoms[i].type = 1;;
+		frame->atoms[i].mass = 1.0;		
+		frame->atoms[i].q = 0.0;
+		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+			{
+			frame->num_mol = frame->atoms[i].mol;
+			}
+		}
+}
+void read4minid( Frame* frame, FILE* df)
+{
+	int i;
+	char line[100];
+	for(i=0; i < frame->num_atoms; i++)
+		{
+		frame->atoms[i].id = i;
+		fgets(line,100,df);
+		sscanf(line, "%d %lf %lf %lf %lf %lf %lf %lf",  &frame->atoms[i].id, \
+		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \ 
+		&frame->atoms[i].observables[1], &frame->atoms[i].observables[2], &frame->atoms[i].observables[3]);		
+		
+		frame->atoms[i].mol = frame->atoms[i].id;
+		frame->atoms[i].type = 1;;
+		frame->atoms[i].mass = 1.0;		
+		frame->atoms[i].q = 0.0;
+		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+			{
+			frame->num_mol = frame->atoms[i].mol;
+			}
+		}
+}	
+void read5minid( Frame* frame, FILE* df)
+{
+	int i;
+	char line[100];
+	for(i=0; i < frame->num_atoms; i++)
+		{
+		frame->atoms[i].id = i;		
+		fgets(line,100,df);
+		sscanf(line, "%d %lf %lf %lf %lf %lf %lf %lf %lf",  &frame->atoms[i].id, \
+		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \ 
+		&frame->atoms[i].observables[1], &frame->atoms[i].observables[2], &frame->atoms[i].observables[3], \
+		&frame->atoms[i].observables[4]);		
+		
+		frame->atoms[i].mol = frame->atoms[i].id;
+		frame->atoms[i].type = 1;;
+		frame->atoms[i].mass = 1.0;		
+		frame->atoms[i].q = 0.0;
+		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+			{
+			frame->num_mol = frame->atoms[i].mol;
+			}
+		}
+}
+void read6minid( Frame* frame, FILE* df)
+{
+	int i;
+	char line[100];
+	for(i=0; i < frame->num_atoms; i++)
+		{
+		frame->atoms[i].id = i;
+		fgets(line,100,df);
+		sscanf(line, "%d %lf %lf %lf %lf %lf %lf %lf %lf %lf",  &frame->atoms[i].id, \
+		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \ 
+		&frame->atoms[i].observables[1], &frame->atoms[i].observables[2], &frame->atoms[i].observables[3], \
+		&frame->atoms[i].observables[4], &frame->atoms[i].observables[5]);		
+		
+		frame->atoms[i].mol = frame->atoms[i].id;
+		frame->atoms[i].type = 1;;
+		frame->atoms[i].mass = 1.0;		
+		frame->atoms[i].q = 0.0;
+		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+			{
+			frame->num_mol = frame->atoms[i].mol;
+			}
+		}
+}
+void read7minid( Frame* frame, FILE* df)
+{
+	int i;
+	char line[100];
+	for(i=0; i < frame->num_atoms; i++)
+		{
+		frame->atoms[i].id = i;
+		fgets(line,100,df);
+		sscanf(line, "%d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf", &frame->atoms[i].id, \
+		&frame->atoms[i].q, &frame->atoms[i].mass, \ 
+		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \ 
+		&frame->atoms[i].observables[1], &frame->atoms[i].observables[2], &frame->atoms[i].observables[3], \
+		&frame->atoms[i].observables[4], &frame->atoms[i].observables[5], &frame->atoms[i].observables[6]);		
+		
+		frame->atoms[i].mol = frame->atoms[i].id;
+		frame->atoms[i].type = 1;;
+		frame->atoms[i].mass = 1.0;		
+		frame->atoms[i].q = 0.0;
+		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+			{
+			frame->num_mol = frame->atoms[i].mol;
+			}
+		}
+}
+void read8minid( Frame* frame, FILE* df)
+{
+	int i;
+	char line[100];
+	for(i=0; i < frame->num_atoms; i++)
+		{
+		frame->atoms[i].id = i;
+		fgets(line,100,df);
+		sscanf(line, "%d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",  &frame->atoms[i].id,  \
+		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \ 
+		&frame->atoms[i].observables[1], &frame->atoms[i].observables[2], &frame->atoms[i].observables[3], \
+		&frame->atoms[i].observables[4], &frame->atoms[i].observables[5], &frame->atoms[i].observables[6], \
+		&frame->atoms[i].observables[7]);		
+		
+		frame->atoms[i].mol = frame->atoms[i].id;
+		frame->atoms[i].type = 1;;
+		frame->atoms[i].mass = 1.0;		
+		frame->atoms[i].q = 0.0;
+		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+			{
+			frame->num_mol = frame->atoms[i].mol;
+			}
+		}
+}
+void read9minid( Frame* frame, FILE* df)
+{
+	int i;
+	char line[100];
+	for(i=0; i < frame->num_atoms; i++)
+		{
+		frame->atoms[i].id = i;
+		fgets(line,100,df);
+		sscanf(line, "%d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",  &frame->atoms[i].id, \
+		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0], \ 
+		&frame->atoms[i].observables[1], &frame->atoms[i].observables[2], &frame->atoms[i].observables[3], \
+		&frame->atoms[i].observables[4], &frame->atoms[i].observables[5], &frame->atoms[i].observables[6], \
+		&frame->atoms[i].observables[7], &frame->atoms[i].observables[8]);		
+		
+		frame->atoms[i].mol = frame->atoms[i].id;
+		frame->atoms[i].type = 1;;
+		frame->atoms[i].mass = 1.0;		
+		frame->atoms[i].q = 0.0;
 		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
 			{
 			frame->num_mol = frame->atoms[i].mol;
