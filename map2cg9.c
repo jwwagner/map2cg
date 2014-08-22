@@ -241,6 +241,7 @@ void do_simple_map(Controller* controls, Frame* inframe, Frame* outframe, char* 
 		//output mapped frame and observables
 		if(controls->map_style_flag == 2) {
 			of = fopen(outfile, "a+");
+			generic_frame_header(outframe, of);
 			(*controls->header_function)(of);			
 			(*controls->output_function)(outframe, of);
 			fclose(of);
