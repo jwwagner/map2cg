@@ -784,43 +784,43 @@ void header9(FILE* of)
 }
 void header0id(FILE* of)
 {
-	fprintf(of, "ITEM: ATOMS id x y z \n");
+	fprintf(of, "ITEM: ATOMS x y z \n");
 }
 void header1id(FILE* of)
 {
-	fprintf(of, "ITEM: ATOMS id x y z U \n");
+	fprintf(of, "ITEM: ATOMS x y z U \n");
 }
 void header3id(FILE* of)
 {
-	fprintf(of, "ITEM: ATOMS id x y z fx fy fz \n");
+	fprintf(of, "ITEM: ATOMS x y z fx fy fz \n");
 }
 void header4id(FILE* of)
 {
-	fprintf(of, "ITEM: ATOMS id x y z dfx dfy dfz dU \n");
+	fprintf(of, "ITEM: ATOMS x y z dfx dfy dfz dU \n");
 }
 void header6id(FILE* of)
 {
-	fprintf(of, "ITEM: ATOMS id x y z fx fy fz dfx dfy dfz \n");
+	fprintf(of, "ITEM: ATOMS x y z fx fy fz dfx dfy dfz \n");
 }
 void header7id(FILE* of)
 {
-	fprintf(of, "ITEM: ATOMS id x y z fx fy fz dfx dfy dfz dU \n");
+	fprintf(of, "ITEM: ATOMS x y z fx fy fz dfx dfy dfz dU \n");
 }
 void header2id(FILE* of)
 {
-	fprintf(of, "ITEM: ATOMS id x y z fx fy \n");
+	fprintf(of, "ITEM: ATOMS x y z fx fy \n");
 }
 void header5id(FILE* of)
 {
-	fprintf(of, "ITEM: ATOMS id x y z U O \n");
+	fprintf(of, "ITEM: ATOMS x y z U O \n");
 }
 void header8id(FILE* of)
 {
-	fprintf(of, "ITEM: ATOMS id x y z fx fy fz dfx dfy dfz U O \n");
+	fprintf(of, "ITEM: ATOMS x y z fx fy fz dfx dfy dfz U O \n");
 }
 void header9id(FILE* of)
 {
-	fprintf(of, "ITEM: ATOMS id x y z fx fy fz dfx dfy dfz qfx qfy qfz \n");
+	fprintf(of, "ITEM: ATOMS x y z fx fy fz dfx dfy dfz qfx qfy qfz \n");
 }
 void header0full(FILE* of)
 {

@@ -13,6 +13,7 @@ void read_bootstrapping_file(Controller*, int*, int*);
 //slave functions
 void read_logfile(Controller*, FILE*, double*, int*);
 void read_guess(Controller*, FILE*, int*);
+void read_merge_file(Controller*, double*, FILE*, int*);
 void read_force_file(Controller*, char*, double*, double*,  int*);
 void read_number_in_line(int, char*, int*);
 void read_number_in_line_float(int, char*, double*);
@@ -246,6 +247,14 @@ void read_topology_file(Controller *control, char* topfile)
     printf("sensitivity_flag %d\n", control->sensitivity_flag);
     printf("map_style_flag %d\n", control->map_style_flag);
   
+  	for(i=0; i < control->num_cg_types; i++) {
+  		printf("\nCG molecule %d has types:\t", i+1);
+  			for(j=0; j < control->prototype[i].num; j++) {
+  			printf("%d\t", control->prototype[i].num_list[j]);	
+  		}
+  	}
+  	printf("\n");
+  	
     if(control->map_style_flag == 0)
     	{
     	control->num_map = control->num_fg_types;
@@ -423,20 +432,25 @@ void read_topology_file(Controller *control, char* topfile)
     	fgets(line,100,fr);//debug flag
     	sscanf(line, "%d", &control->debug_flag);
     	
+    	printf("\nSensitivity Files are:\n");
+    	printf("dump file #1: %s\n", control->files.dump1);
+    	printf("dump file #2: %s\n", control->files.dump2);
+    	printf("log files: %s\n", control->files.log);
+    	printf("guess file: %s\n\n", control->files.guess);
+    	
     	//set scaleF flag
-    	double temp = 300.0 * 0.00198720414; //kcal/(mol K)
+    	double temp = 300.0 * 0.00198720414 * 4.184; //kcal/(mol K) --> now kj/(mol K)
     	if( (control->debug_flag == 3) || (control->debug_flag == 5) ) 
     		{
     		control->scaleF = temp;
-    		}
-    	else {
+    	} else {
     		control->scaleF = 1.0;
     		}
     		
     	//set scaleU flag
     	control->scaleU1 = 1.0;
     	control->scaleU2 = 1.0;
-    	if( ((control->debug_flag >= 2) && (control->debug_flag <= 5)) || (control->debug_flag >= 7) )
+    	if(  ( (control->debug_flag >= 2) && (control->debug_flag <= 5) ) || (control->debug_flag >= 7)  )
     		{
     		control->scaleU1 *= temp;
     		control->scaleU2 *= temp;
@@ -535,6 +549,9 @@ void read_topology_file(Controller *control, char* topfile)
     	sscanf(line,"%s", control->files.guess); //name of tabulated output
     	fgets(line, 100,fr);//units flag
     	sscanf(line,"%d", &control->units_flag);
+    	
+    	printf("input file is %s\n", control->files.guess);
+    	printf("units flag is %d\n", control->units_flag);
     	}
 	
 	//no parameters need for control->sensitivity_flag == 4  	
@@ -633,6 +650,29 @@ void read_topology_file(Controller *control, char* topfile)
     		printf("outfile: %s\n", name);
     		}	 	
     	}
+    else if (control->sensitivity_flag == 8 )
+    	{
+    	//for combining scalar file with input frame file
+    	char name[64];
+    	int column;
+    	
+    	fgets(line,100,fr);//blank line
+    	//read in file
+    	fgets(line,100,fr);
+    	sscanf(line,"%s", name);
+    	//read column for merging
+    	fgets(line,100,fr);
+    	sscanf(line,"%d", &column);
+    	
+    	//transfer inputs to struct
+    	control->col_num = column;
+    	
+    	control->num_files = 1;
+    	control->file_point = malloc( control->num_files * sizeof(FILE*) );
+   		control->file_point[0] = fopen(name, "rt");
+    	printf("infile: %s = %s for line %d\n", name, line, column);
+    	}
+    		
 	fclose(fr);
     printf("finished reading top file\n\n");
 }
@@ -1081,32 +1121,23 @@ void read_guess(Controller* control, FILE* gf, int* flag)
 	char line[100];
 	int i;
 	
+
+	if( fgets (line, 100, gf) == NULL )
+		{
+		*flag = 0;
+		printf("end of file reached in GUESS file!\n");
+		eof_exit2(control, gf, flag);
+		return;
+		}
+
 	if(control->guess_type == 0)
 		{
-		//check if we are at EOF
-		if( fgets (line, 100, gf) == NULL )
-			{
-			*flag = 0;
-			printf("end of file reached in GUESS file!\n");
-			eof_exit2(control, gf, flag);
-			return;
-			}
-
 		//read guess value
 		sscanf(line, "%lf", &control->guess);
 		}
 
 	else if(control->guess_type == 1)
 		{
-		//check if we are at EOF
-		if( fgets (line, 100, gf) == NULL )
-			{
-			*flag = 0;
-			printf("end of file reached in GUESS file!\n");
-			eof_exit2(control, gf, flag);
-			return;
-			}
-
 		//check if we need to skip header info
 		if(control->frame == 1)
 			{
@@ -1120,15 +1151,19 @@ void read_guess(Controller* control, FILE* gf, int* flag)
 				//check line
 				memcpy(test2, &line[0], 4);
 				test2[4] = '\0';
-				if( strcmp(test2, "Step") == 0) i = 0;			
-				//read next line
-				fgets(line, 100, gf);
+				if( strcmp(test2, "Step") == 0)
+					{
+					i = 0;
+					}			
+					
+			//	//read next line
+			//	fgets(line, 100, gf);
 			
 				//check if we are at EOF
 				if( fgets (line, 100, gf) == NULL )
 					{
 					*flag = 0;
-					printf("end of file reached in GUESS!\n");
+					printf("end of file reached in GUESS (after Step check)!\n");
 					eof_exit2(control, gf, flag);
 					return;
 					}
@@ -1144,6 +1179,7 @@ void read_guess(Controller* control, FILE* gf, int* flag)
 				
 			//read actual content for energy value
 			sscanf(line, "%lf %lf %lf %lf %lf", &time, &pe, &vdwl, &coul, &volume);
+			
 			if(control->log_type == 0) 
 				{
 				control->guess = vdwl;
@@ -1154,6 +1190,51 @@ void read_guess(Controller* control, FILE* gf, int* flag)
 				}
 			}
 		}
+}
+
+//////////////////////////////
+///   read_merge_file	  ///
+////////////////////////////
+
+void read_merge_file(Controller* control, double* observable, FILE* lf, int* flag)
+{
+
+	//declare varaibles
+	int i, id;
+	int spot = control->col_num;
+	double terms[5];
+	char line[150];
+	char test[7];
+	
+	//check if we are at EOF
+	if( fgets(line, 100, lf) == NULL )
+		{
+		*flag = 0;
+		printf("end of file reached in merge file!\n");
+		eof_exit2(control, lf, flag);
+		return;
+		}
+
+	//see if this is a WARNING line or actual content
+	memcpy(test, &line[0], 6);
+	test[6] = '\0';
+	if( strcmp(test, "FRAME:") != 0) 
+		{
+		*flag = 0;
+		printf("error: frame delimiter not found where expected in line |%s| to test |%s|\n", line, test);
+		eof_exit2(control, lf, flag);
+		return;
+		}
+	
+	//printf("reading %d num_cg_sites\n", control->num_cg_sites);
+	for (i=0; i < control->num_cg_sites; i++)
+		{
+		//read actual content for energy value
+		fgets(line, 150, lf);
+		sscanf(line, "%d %lf %lf %lf %lf %lf", &id, &terms[0], &terms[1], &terms[2], &terms[3], &terms[4]);
+		observable[i] = terms[ spot ];
+		}
+	//printf("last line read for frame is |%s|\n", line);
 }
 
 //////////////////////////////
@@ -1548,7 +1629,7 @@ void read1min( Frame* frame, FILE* df)
 		
 		frame->atoms[i].id = i;
 		frame->atoms[i].mol = frame->atoms[i].id;
-		frame->atoms[i].type = 1;;
+		frame->atoms[i].type = 1;
 		frame->atoms[i].mass = 1.0;		
 		frame->atoms[i].q = 0.0;
 		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
@@ -1571,7 +1652,7 @@ void read2min( Frame* frame, FILE* df)
 		
 		frame->atoms[i].id = i;
 		frame->atoms[i].mol = frame->atoms[i].id;
-		frame->atoms[i].type = 1;;
+		frame->atoms[i].type = 1;
 		frame->atoms[i].mass = 1.0;		
 		frame->atoms[i].q = 0.0;		
 		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
@@ -1594,7 +1675,7 @@ void read3min( Frame* frame, FILE* df)
 		
 		frame->atoms[i].id = i;
 		frame->atoms[i].mol = frame->atoms[i].id;
-		frame->atoms[i].type = 1;;
+		frame->atoms[i].type = 1;
 		frame->atoms[i].mass = 1.0;		
 		frame->atoms[i].q = 0.0;
 		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
@@ -1617,7 +1698,7 @@ void read4min( Frame* frame, FILE* df)
 		
 		frame->atoms[i].id = i;
 		frame->atoms[i].mol = frame->atoms[i].id;
-		frame->atoms[i].type = 1;;
+		frame->atoms[i].type = 1;
 		frame->atoms[i].mass = 1.0;		
 		frame->atoms[i].q = 0.0;
 		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
@@ -1641,7 +1722,7 @@ void read5min( Frame* frame, FILE* df)
 		
 		frame->atoms[i].id = i;
 		frame->atoms[i].mol = frame->atoms[i].id;
-		frame->atoms[i].type = 1;;
+		frame->atoms[i].type = 1;
 		frame->atoms[i].mass = 1.0;		
 		frame->atoms[i].q = 0.0;
 		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
@@ -1665,7 +1746,7 @@ void read6min( Frame* frame, FILE* df)
 		
 		frame->atoms[i].id = i;
 		frame->atoms[i].mol = frame->atoms[i].id;
-		frame->atoms[i].type = 1;;
+		frame->atoms[i].type = 1;
 		frame->atoms[i].mass = 1.0;		
 		frame->atoms[i].q = 0.0;
 		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
@@ -1690,7 +1771,7 @@ void read7min( Frame* frame, FILE* df)
 		
 		frame->atoms[i].id = i;
 		frame->atoms[i].mol = frame->atoms[i].id;
-		frame->atoms[i].type = 1;;
+		frame->atoms[i].type = 1;
 		frame->atoms[i].mass = 1.0;		
 		frame->atoms[i].q = 0.0;
 		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
@@ -1715,7 +1796,7 @@ void read8min( Frame* frame, FILE* df)
 		
 		frame->atoms[i].id = i;
 		frame->atoms[i].mol = frame->atoms[i].id;
-		frame->atoms[i].type = 1;;
+		frame->atoms[i].type = 1;
 		frame->atoms[i].mass = 1.0;		
 		frame->atoms[i].q = 0.0;
 		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
@@ -1740,7 +1821,7 @@ void read9min( Frame* frame, FILE* df)
 		
 		frame->atoms[i].id = i;
 		frame->atoms[i].mol = frame->atoms[i].id;
-		frame->atoms[i].type = 1;;
+		frame->atoms[i].type = 1;
 		frame->atoms[i].mass = 1.0;		
 		frame->atoms[i].q = 0.0;
 		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
@@ -1784,10 +1865,10 @@ void read1minid( Frame* frame, FILE* df)
 		&frame->atoms[i].x, &frame->atoms[i].y, &frame->atoms[i].z, &frame->atoms[i].observables[0]);		
 		
 		frame->atoms[i].mol = frame->atoms[i].id;
-		frame->atoms[i].type = 1;;
+		frame->atoms[i].type = 1;
 		frame->atoms[i].mass = 1.0;		
 		frame->atoms[i].q = 0.0;
-		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+		if( (frame->num_mol < frame->num_atoms) ) 
 			{
 			frame->num_mol = frame->atoms[i].mol;
 			}
@@ -1806,10 +1887,10 @@ void read2minid( Frame* frame, FILE* df)
 		&frame->atoms[i].observables[1]);		
 		
 		frame->atoms[i].mol = frame->atoms[i].id;
-		frame->atoms[i].type = 1;;
+		frame->atoms[i].type = 1;
 		frame->atoms[i].mass = 1.0;		
 		frame->atoms[i].q = 0.0;		
-		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+		if( (frame->num_mol < frame->num_atoms) ) 
 			{
 			frame->num_mol = frame->atoms[i].mol;
 			}
@@ -1828,14 +1909,17 @@ void read3minid( Frame* frame, FILE* df)
 		&frame->atoms[i].observables[1], &frame->atoms[i].observables[2]);		
 		
 		frame->atoms[i].mol = frame->atoms[i].id;
-		frame->atoms[i].type = 1;;
+		frame->atoms[i].type = 1;
 		frame->atoms[i].mass = 1.0;		
 		frame->atoms[i].q = 0.0;
-		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+		//if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+		if( (frame->num_mol < frame->num_atoms) ) 
 			{
-			frame->num_mol = frame->atoms[i].mol;
+			//printf("adjust num_mol %d to %d in read\n", frame->num_mol, frame->atoms[i].mol);
+			frame->num_mol = frame->atoms[i].mol - 1;
 			}
 		}
+	
 }
 void read4minid( Frame* frame, FILE* df)
 {
@@ -1850,10 +1934,10 @@ void read4minid( Frame* frame, FILE* df)
 		&frame->atoms[i].observables[1], &frame->atoms[i].observables[2], &frame->atoms[i].observables[3]);		
 		
 		frame->atoms[i].mol = frame->atoms[i].id;
-		frame->atoms[i].type = 1;;
+		frame->atoms[i].type = 1;
 		frame->atoms[i].mass = 1.0;		
 		frame->atoms[i].q = 0.0;
-		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+		if( (frame->num_mol < frame->num_atoms) ) 
 			{
 			frame->num_mol = frame->atoms[i].mol;
 			}
@@ -1873,10 +1957,10 @@ void read5minid( Frame* frame, FILE* df)
 		&frame->atoms[i].observables[4]);		
 		
 		frame->atoms[i].mol = frame->atoms[i].id;
-		frame->atoms[i].type = 1;;
+		frame->atoms[i].type = 1;
 		frame->atoms[i].mass = 1.0;		
 		frame->atoms[i].q = 0.0;
-		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+		if( (frame->num_mol < frame->num_atoms) ) 
 			{
 			frame->num_mol = frame->atoms[i].mol;
 			}
@@ -1896,10 +1980,10 @@ void read6minid( Frame* frame, FILE* df)
 		&frame->atoms[i].observables[4], &frame->atoms[i].observables[5]);		
 		
 		frame->atoms[i].mol = frame->atoms[i].id;
-		frame->atoms[i].type = 1;;
+		frame->atoms[i].type = 1;
 		frame->atoms[i].mass = 1.0;		
 		frame->atoms[i].q = 0.0;
-		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+		if( (frame->num_mol < frame->num_atoms) ) 
 			{
 			frame->num_mol = frame->atoms[i].mol;
 			}
@@ -1920,10 +2004,10 @@ void read7minid( Frame* frame, FILE* df)
 		&frame->atoms[i].observables[4], &frame->atoms[i].observables[5], &frame->atoms[i].observables[6]);		
 		
 		frame->atoms[i].mol = frame->atoms[i].id;
-		frame->atoms[i].type = 1;;
+		frame->atoms[i].type = 1;
 		frame->atoms[i].mass = 1.0;		
 		frame->atoms[i].q = 0.0;
-		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+		if( (frame->num_mol < frame->num_atoms) ) 
 			{
 			frame->num_mol = frame->atoms[i].mol;
 			}
@@ -1944,10 +2028,10 @@ void read8minid( Frame* frame, FILE* df)
 		&frame->atoms[i].observables[7]);		
 		
 		frame->atoms[i].mol = frame->atoms[i].id;
-		frame->atoms[i].type = 1;;
+		frame->atoms[i].type = 1;
 		frame->atoms[i].mass = 1.0;		
 		frame->atoms[i].q = 0.0;
-		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+		if( (frame->num_mol < frame->num_atoms) ) 
 			{
 			frame->num_mol = frame->atoms[i].mol;
 			}
@@ -1968,10 +2052,10 @@ void read9minid( Frame* frame, FILE* df)
 		&frame->atoms[i].observables[7], &frame->atoms[i].observables[8]);		
 		
 		frame->atoms[i].mol = frame->atoms[i].id;
-		frame->atoms[i].type = 1;;
+		frame->atoms[i].type = 1;
 		frame->atoms[i].mass = 1.0;		
 		frame->atoms[i].q = 0.0;
-		if( (frame->atoms[i].mol > frame->num_mol) || (frame->num_mol > frame->num_atoms) ) 
+		if( (frame->num_mol < frame->num_atoms) ) 
 			{
 			frame->num_mol = frame->atoms[i].mol;
 			}

@@ -16,8 +16,10 @@ void combine_cg_sensitivity_data(Controller*, Frame*, Frame*, Frame*);
 void process_frame_order(Controller*, Frame*, Frame*);
 void process_ij_charge_frames(Controller*, Frame*, Frame*);
 void process_ii_charge_frames(Controller*, Frame*, Frame*);
+void process_file_merge(Controller*, Frame*, double*);
 //slave functions (newer modularization)
 void determine_type(Controller*, Frame*, Frame*, int*, int*);
+int compatible_type_test(Controller*, Frame*, Frame*, int, int);
 void geometry_mapping(Controller*, Frame*, Frame*);
 //free functions
 void free_sensitivity_intermediates(Controller*, Frame*, Frame*);
@@ -233,9 +235,10 @@ void process_no_map_frames_and_log(Controller* control, Frame* inframe1, Frame* 
 		{
 		//FRAME 1
 		type = inframe1->atoms[i].type;
+		
 		type_spot = -1;
 		//check if this is new type (if not, increment counter)
-		for(j = 0; j <= inframe1->type_count; i++)
+		for(j = 0; j <= inframe1->type_count; j++)
 			{
 			if( inframe1->type[j] == type)
 				{
@@ -243,6 +246,7 @@ void process_no_map_frames_and_log(Controller* control, Frame* inframe1, Frame* 
 				type_spot = j;
 				}
 			}
+		
 		//handle new type
 		if(type_spot == -1)
 			{
@@ -255,7 +259,7 @@ void process_no_map_frames_and_log(Controller* control, Frame* inframe1, Frame* 
 		type = inframe2->atoms[i].type;
 		type_spot = -1;
 		//check if this is new type (if not, increment counter)
-		for(j = 0; j <= inframe2->type_count; i++)
+		for(j = 0; j <= inframe2->type_count; j++)
 			{
 			if( inframe2->type[j] == type)
 				{
@@ -284,14 +288,21 @@ void map_all_atoms(Controller* control, Frame* inframe, Frame* outframe)
 {
 	int i, j, k, l;
 	int mol_count = 0;
-	int mol_val;
+	int mol_val = 0;
 	int site_count;
 	int key[inframe->num_mol];
+	int assigned;
+	int testid = 0;
 	
 	//intialize key
+	//printf("process frame with inframe->num_mol %d \n", inframe->num_mol);
 	for(i = 0; i < inframe->num_mol; i++)
 		{
 		key[i] = -1;
+		
+		for(j=0; j < control->num_cg_types; j++) {
+			outframe->sites[i].matches[j] = 1;
+			}	
 		}
 
 	if(control->observable_map_flag == 0) //sum observables
@@ -300,15 +311,67 @@ void map_all_atoms(Controller* control, Frame* inframe, Frame* outframe)
 		for(i = 0; i < inframe->num_atoms; i++)
 			{
 			//check to see if mol key is set
-			mol_val = inframe->atoms[i].mol - 1;
-			if(key[mol_val] == -1)
-				{
+			mol_val = (inframe->atoms[i].mol - 1) * control->num_cg_types;
+			//printf("atom number is %d in mol %d with mol_val %d and key %d\n", i, inframe->atoms[i].mol, mol_val, key[mol_val]);
+			if(key[mol_val] == -1) {
+				//printf("assign new type first\n");
 				key[mol_val] = mol_count;
 				outframe->sites[key[mol_val]].id = key[mol_val] + 1;
 				outframe->sites[key[mol_val]].mol = key[mol_val] + 1;
+				outframe->sites[key[mol_val]].num_in_site = 1;
+				
+				for(j=0; j < control->num_cg_types; j++) {
+					outframe->sites[key[mol_val]].matches[j] = 1;	
+				}
 				mol_count++;
-				}												
-		
+//			}
+			} else if( compatible_type_test(control, inframe, outframe, inframe->atoms[i].type, key[mol_val]) == -1 ) {
+				//this new atom is NOT compatible with original CG type
+				testid = mol_val;
+				
+				//printf("comp: check assignment\n");
+				//test if we have already assigned another type (that this would be compatible with)
+				assigned = -1;
+				for(j = 1; j < control->num_cg_types; j++) {
+					//check if next type is allocated
+					if( key[mol_val + j] == -1 ) {
+						break;
+						} 
+					else {
+						//key is assigned
+						testid = mol_val + j; 
+						//test if key is compatible
+						//printf("test next key\n");
+						if(compatible_type_test(control, inframe, outframe, inframe->atoms[i].type, key[testid]) == -1) {		
+							assigned = 1;
+							break;
+							}
+						//otherwise, keep looking with next key
+						}
+					}
+				if(assigned == -1) {
+					//So, we still need to create a new type
+					//printf("create new mol_val from %d and testid %d\n", mol_val, testid);
+					
+					if(testid > mol_val) {
+						mol_val = testid + 1;
+					} else {
+						mol_val++;
+					}
+					
+					key[mol_val] = mol_count;
+					outframe->sites[key[mol_val]].id = key[mol_val] + 1;
+					outframe->sites[key[mol_val]].mol = key[mol_val] + 1;
+					outframe->sites[key[mol_val]].num_in_site = 1;
+					for(j=0; j < control->num_cg_types; j++) {
+						outframe->sites[key[mol_val]].matches[j] = 1;	
+					}
+					mol_count++;
+					}
+				} else {
+					//printf("type is compatible\n");
+				}
+			
 			//transfer information to CG site
 			site_count = outframe->sites[ key[mol_val] ].num_in_site;		 
 			outframe->sites[key[mol_val]].coord[site_count].x = inframe->atoms[i].x;
@@ -496,7 +559,7 @@ void combine_sensitivity_data(Controller* control, Frame* inframe1, Frame* infra
 		}
 		
 	outframe->type_count = inframe1->type_count;
-	for(i = 0; i< control->num_cg_types; i++)
+	for(i = 0; i < control->num_cg_types; i++)
 		{
 		outframe->type[i] = inframe1->type[i];
 		outframe->type_num[i] = inframe1->type_num[i];
@@ -802,7 +865,7 @@ void process_frame_order(Controller* control, Frame* inframe, Frame* outframe)
 			}
 		if(prev == -1) 
 			{
-			printf("ERROR: NO TYPE MATCH FOUND FOR ORDER #%d TYPE %d\n", i, inframe->type[i]);
+			printf("ERROR: NO TYPE MATCH FOUND FOR ORDER #%d TYPE %d (in process frame order)\n", i, inframe->type[i]);
 			}
 		outframe->type[i] = inframe->type[ prev ];
 		outframe->type_num[i] = inframe->type_num[ prev ];
@@ -1100,6 +1163,20 @@ void process_ii_charge_frames(Controller* control, Frame* inframe, Frame* outfra
 }
 
 /////////////////////////////
+///   process_file_merge  ///
+/////////////////////////////
+
+void process_file_merge(Controller* control, Frame* frame, double* observable)
+{
+	int i;
+	
+	for(i=0; i < control->num_cg_sites; i++) 
+		{
+		frame->sites[i].observables[0] = observable[i];
+		}
+}
+
+/////////////////////////////
 ///   determine_type	 ///
 ///////////////////////////
 
@@ -1113,13 +1190,18 @@ void determine_type(Controller* control, Frame* inframe, Frame* outframe, int* c
 	int min_val = 99;
 	
 	//see if type is determined 
+	//printf("in determine_type() type is %d for *map %d\n", outframe->sites[*map].type, *map);
 	if(outframe->sites[*map].type == -1)
 		{
 		//see how many matches remain
+		//printf("num_cg_types is %d\n", control->num_cg_types);
 		for(j = 0; j < control->num_cg_types; j++) //loop through all prototypes
 			{			
+			//printf("test type %d with match value %d\n", j, outframe->sites[*map].matches[j]);
 			if(outframe->sites[*map].matches[j] == 1) //only consider if they are still in the running
 				{
+				//printf("possible match for type %d\n", j);
+				
 				//verify if newest type is still a match
 				found = 0;
 				
@@ -1134,8 +1216,10 @@ void determine_type(Controller* control, Frame* inframe, Frame* outframe, int* c
 					tie = 0;
 					}
 				
+				//printf("prototype[%d].num is %d\n", j, control->prototype[j].num);
 				for(k = 0; k < control->prototype[j].num; k++) //check all prototypes types
-					{			
+					{	
+					//printf("k is %d: compare inframe->atoms[*current].type  %d ==  %d control->prototype[j].num_list[k]	\n", k, inframe->atoms[*current].type, control->prototype[j].num_list[k]);	
 					if(inframe->atoms[*current].type == control->prototype[j].num_list[k])
 						{
 						found=1;
@@ -1153,10 +1237,13 @@ void determine_type(Controller* control, Frame* inframe, Frame* outframe, int* c
 				num_matches++;
 				}
 			}
-					
+			
+		//printf("%d matches possible\n", num_matches);
+				
 		//see if we have a unique match (or need evaluation or no match)
 		if(num_matches > 1) //we need to force evaluation in tie-break
 			{
+			//printf("force evaluation for %d matches\n", num_matches);
 			//check smallest
 			if( outframe->sites[*map].num_in_site > (min_val - 1) ) //we have to fail because the molecule is too large
 				{
@@ -1256,6 +1343,7 @@ void determine_type(Controller* control, Frame* inframe, Frame* outframe, int* c
 
 		if(num_matches == 1) //we have a unique winner
 			{
+			//printf("unique winner\n");
 			//find and set type
 			for(j = 0; j < control->num_cg_types; j++)
 				{
@@ -1286,9 +1374,102 @@ void determine_type(Controller* control, Frame* inframe, Frame* outframe, int* c
 		else if(num_matches == 0)
 			{
 			//there is either a new molecule or an error in the inputs
-			 printf("ERROR: NO MOLECULE TYPE MATCH !!!\n");
+			 printf("ERROR: NO MOLECULE TYPE MATCH !!! (in determine_type())\n");
 			}				
+		//} else {
+		//	printf("DETERMINE_TYPE SAYS THAT TYPE IS DETERMINED!!!\n");
 		}
+}	
+
+///////////////////////////////
+///   compatible_type_test  ///
+///////////////////////////////
+
+int compatible_type_test(Controller* control, Frame* inframe, Frame* outframe, int current_type, int map)
+{
+	//printf("compatible_type_test for type %d\n", current_type);
+	int j, k, l, m;
+	int check = 0;
+	
+	//see how many matches remain
+	for(j = 0; j < control->num_cg_types; j++) { //loop through all prototypes			
+		//printf("type %d with matches of map %d for %d\n", j, map, outframe->sites[map].matches[j]);
+		//printf("type %d with matches %d of map %d\n", j, outframe->sites[map].matches[j], map);
+		//if(outframe->sites[map].matches[j] == 1) { //only consider if they are still in the running
+			
+			//see if the combined molecule is of reasonable size
+			//printf("num_in_site is %d\n", outframe->sites[map].num_in_site);
+			//printf("prototype %d has num %d\n", j, control->prototype[j].num);
+			
+			if( outframe->sites[map].num_in_site > control->prototype[j].num ) {
+				//skip this type since it is impossible
+				//printf("skip since this type is impossible\n");
+				continue;
+			}
+			
+			//see if this type is part of the potential prototype
+			int evaluate[ control->prototype[j].num ];		
+			check = 0;
+			for(k = 0; k < control->prototype[j].num; k++) evaluate[k] = -1;
+			
+			//specifically test new type
+			//printf("check evaluate with j %d  and num %d\n", j, control->prototype[j].num);
+			
+			for(k = 0; k < control->prototype[j].num; k++) {
+				//printf(" k %d with current_type %d and num_list type %d\n", k, current_type, control->prototype[j].num_list[k]);
+				if( current_type == control->prototype[j].num_list[k] )
+				{
+					evaluate[k] = outframe->sites[map].num_in_site + 1;
+					check = 1;
+					//printf("temp pass to check 1\n");
+					return 1;
+					break;
+				}
+			}
+/*			
+			printf("at if of evaluate with check %d\n", check);
+			
+			if (check == 0) {
+				continue;
+			} else {
+			
+				printf("else for check test\n");
+				for(l = 0; l < outframe->sites[map].num_in_site; l++) { //l is for site types
+					//try to match with each prototype type
+					for(m = 0; m < control->prototype[j].num; m++) { //m is for prototype type
+						if( evaluate[m] == -1) { //only consider if it is not yet claimed
+						
+							printf("  test COORD %d type %d vs num %d type %d\n", l, outframe->sites[map].coord[l].type, m, control->prototype[j].num_list[m]);
+							if( outframe->sites[map].coord[l].type == control->prototype[j].num_list[m]) {
+								evaluate[m] = l;
+								break;	//this leaves the for loop in k and moves on to next type
+							}
+						}
+						//fail if we are still here at the last point and have not already last
+						if( m == (control->prototype[j].num - 1) ) {
+							printf("inner inner fail\n");
+							check = 0;
+							break;
+						}
+					}
+					if (check == 0) {
+						printf("inner fail\n");
+						break;
+					}
+				}
+				if(check == 0) {
+					continue;
+				}
+			
+			//we have found a match that is still viable
+			printf("pass\n");
+			return 1;
+			}
+*/		//}
+	}
+	//otherwise, we have failed to find a match
+	//printf("fail\n");
+	return -1;
 }	
 
 /////////////////////////////

@@ -81,6 +81,10 @@
 // %s filename for output *I
 // %s filename for output *J
 //		#end of input file, please left blank line at end
+//IF sensitivity flag == 8 (merge data into frame)
+// %s  #filename for data file 
+// int #column from data to add to frame content
+
 //ENDIF
 
 //call with one of 4 options
@@ -117,6 +121,7 @@ void do_ii_charge_derivative(Controller*, Frame*, Frame*);
 void do_ij_charge_derivative(Controller*);
 void do_map_to_full(Controller*, Frame*, Frame*, char*, char*);
 void do_sort_frame_by_type(Controller*, Frame*, Frame*, char*, char*);
+void do_frame_merge(Controller*, Frame*, Frame*, char*, char*);
 void sensitivity_no_mapping(Controller*, FILE*, FILE*, FILE*, FILE*, FILE*, Frame*, Frame*, Frame*, char*);
 void sensitivity_with_mapping(Controller*, FILE*, FILE*, FILE*, FILE*, FILE*, Frame*, Frame*, Frame*, char*);
 void handle_cg_frame_read(Controller*, Frame*);
@@ -197,6 +202,10 @@ int main(int argc,char *argv[])
 	else if(controls.sensitivity_flag == 7) 
 		{
 		do_ij_charge_derivative(&controls);
+		}
+	else if(controls.sensitivity_flag == 8)
+		{
+		do_frame_merge(&controls, &frame, &outframe, datfile, outfile);
 		}
 	//free allocated variables
 	printf("free basic files\n");
@@ -822,6 +831,80 @@ void do_sort_frame_by_type(Controller* control, Frame* inframe, Frame* outframe,
 		}
 	free(control->prototype);
 	free(control->order);
+}
+
+void do_frame_merge(Controller* control, Frame* inframe, Frame* outframe, char* infile, char* outfile) 
+{
+	//declare local variables
+	int cont1 = 1;
+	int cont2 = 1;
+	int frame_count = 0;
+	
+	double* observable = malloc(control->num_cg_sites * sizeof(double));
+	
+	FILE* df;
+	FILE* lf;
+	FILE* of;
+	
+	//open dump file and toggle output file to reset
+	df = fopen(infile, "rt");
+	lf  = control->file_point[0];
+	of  = fopen(outfile, "w+");
+	fclose(of);
+	
+	//check that all files opened correctly
+	if(df == NULL)
+		{
+		printf("dump file #1 specified does not exist\n");
+		}
+	if(lf == NULL) 
+		{
+		printf("data file specified does not exist\n");
+		}
+
+	//exit if there is an error
+	if( (df == NULL) || (lf == NULL) ) 
+		{
+		exit(EXIT_SUCCESS);
+		}
+	
+	//read first frames
+	frame_count++;
+	control->frame++;
+	read_frame(control, inframe, df, &cont1);
+	read_merge_file(control, observable, lf, &cont2);
+	
+	while(cont1 * cont2 == 1)
+		{
+		//process/map frame
+		process_frame(control, inframe, outframe);
+		
+		//add in merge data to processed frame
+		process_file_merge(control, outframe, observable);
+		
+		//output frame
+		output_frame(control, outframe, outfile);
+		
+		//read in next frame to check cont_flag
+		read_frame(control, inframe, df, &cont1);
+		read_merge_file(control, observable, lf, &cont2);
+		}
+		
+	//clean-up 
+	
+	///
+	///
+	
+	//close files for frame, and merge reading
+	fclose(df);
+	fclose(lf);
+	
+	free(observable);
+	free(control->file_point);
+	
+	//free allocated varaibles
+	free_inframes(control, inframe);
+	free_outframes(control, outframe); 
 }
 
 ///////////////////////////////////////////

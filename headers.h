@@ -75,6 +75,7 @@ typedef struct
 	
 	int num_map;
 	int num_truncate;
+	int col_num;
 	int frame;
 	int* map;
 
