@@ -496,15 +496,23 @@ void do_force_conversion(Controller* control, char* infile, char* outfile)
 			force[i] /= 41.84;
 			}
 		} 
-	else if(control->units_flag == 1) 
+	else
 		{
 		printf("no unit conversion applied\n");
 		}
 	 
 	printf("write_output\n");
-	//write output
-	output_force_file(control, num_entries, distance, potential, force, outfile);
 	
+	//write output
+	if(control->units_flag == 2) 
+		{
+		output_force_file(control, num_entries, distance, force, force, outfile);
+		}
+	else
+		{
+		output_force_file(control, num_entries, distance, potential, force, outfile);
+		}
+		
 	//free variables
 	free(distance);
 	free(force);
