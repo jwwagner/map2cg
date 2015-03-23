@@ -289,27 +289,26 @@ void map_all_atoms(Controller* control, Frame* inframe, Frame* outframe)
 	int i, j, k, l;
 	int mol_count = 0;
 	int mol_val = 0;
+	int real_mol_val = 0;
 	int site_count;
-	int key[inframe->num_mol];
+	int num_key = inframe->num_mol * control->num_cg_types;
+	int key[num_key];
 	int assigned;
 	int testid = 0;
 	
 	//intialize key
 	//printf("process frame with inframe->num_mol %d \n", inframe->num_mol);
-	for(i = 0; i < inframe->num_mol; i++)
-		{
+	for(i = 0; i < num_key; i++) {
 		key[i] = -1;
 		
 		for(j=0; j < control->num_cg_types; j++) {
 			outframe->sites[i].matches[j] = 1;
-			}	
-		}
+		}	
+	}
 
-	if(control->observable_map_flag == 0) //sum observables
-		{
+	if(control->observable_map_flag == 0) { //sum observables
 		//process and sort all FG atoms
-		for(i = 0; i < inframe->num_atoms; i++)
-			{
+		for(i = 0; i < inframe->num_atoms; i++) {
 			//check to see if mol key is set
 			mol_val = (inframe->atoms[i].mol - 1) * control->num_cg_types;
 			//printf("atom number is %d in mol %d with mol_val %d and key %d\n", i, inframe->atoms[i].mol, mol_val, key[mol_val]);
@@ -317,14 +316,10 @@ void map_all_atoms(Controller* control, Frame* inframe, Frame* outframe)
 				//printf("assign new type first\n");
 				key[mol_val] = mol_count;
 				outframe->sites[key[mol_val]].id = key[mol_val] + 1;
-				outframe->sites[key[mol_val]].mol = key[mol_val] + 1;
+				outframe->sites[key[mol_val]].mol = real_mol_val + 1;
 				outframe->sites[key[mol_val]].num_in_site = 1;
-				
-				for(j=0; j < control->num_cg_types; j++) {
-					outframe->sites[key[mol_val]].matches[j] = 1;	
-				}
 				mol_count++;
-//			}
+				real_mol_val++;
 			} else if( compatible_type_test(control, inframe, outframe, inframe->atoms[i].type, key[mol_val]) == -1 ) {
 				//this new atom is NOT compatible with original CG type
 				testid = mol_val;
@@ -335,43 +330,37 @@ void map_all_atoms(Controller* control, Frame* inframe, Frame* outframe)
 				for(j = 1; j < control->num_cg_types; j++) {
 					//check if next type is allocated
 					if( key[mol_val + j] == -1 ) {
+						testid = mol_val + j - 1;
 						break;
-						} 
-					else {
+					} else {
 						//key is assigned
 						testid = mol_val + j; 
 						//test if key is compatible
 						//printf("test next key\n");
-						if(compatible_type_test(control, inframe, outframe, inframe->atoms[i].type, key[testid]) == -1) {		
+						if(compatible_type_test(control, inframe, outframe, inframe->atoms[i].type, key[testid]) == 1) {		
 							assigned = 1;
+							mol_val = testid;
 							break;
-							}
-						//otherwise, keep looking with next key
 						}
+						//otherwise, keep looking with next key
 					}
+				}
 				if(assigned == -1) {
 					//So, we still need to create a new type
 					//printf("create new mol_val from %d and testid %d\n", mol_val, testid);
 					
-					if(testid > mol_val) {
-						mol_val = testid + 1;
-					} else {
-						mol_val++;
-					}
+					mol_val = testid + 1;
 					
 					key[mol_val] = mol_count;
 					outframe->sites[key[mol_val]].id = key[mol_val] + 1;
-					outframe->sites[key[mol_val]].mol = key[mol_val] + 1;
+					outframe->sites[key[mol_val]].mol = outframe->sites[key[(inframe->atoms[i].mol - 1) * control->num_cg_types] ].mol;
 					outframe->sites[key[mol_val]].num_in_site = 1;
-					for(j=0; j < control->num_cg_types; j++) {
-						outframe->sites[key[mol_val]].matches[j] = 1;	
-					}
 					mol_count++;
-					}
-				} else {
-					//printf("type is compatible\n");
 				}
-			
+			} else {
+				//printf("type is compatible\n");
+			}
+
 			//transfer information to CG site
 			site_count = outframe->sites[ key[mol_val] ].num_in_site;		 
 			outframe->sites[key[mol_val]].coord[site_count].x = inframe->atoms[i].x;
@@ -384,14 +373,12 @@ void map_all_atoms(Controller* control, Frame* inframe, Frame* outframe)
 
 			determine_type(control, inframe, outframe, &i, &key[mol_val]);
 	
-			for(j = 0; j < outframe->num_observables; j++)
-				{
+			for(j = 0; j < outframe->num_observables; j++) {
 				outframe->sites[key[mol_val]].observables[j] += inframe->atoms[i].observables[j];
-				}
 			}
-				
+		}			
 		geometry_mapping(control, inframe, outframe);
-		}
+	}
 	outframe->num_mol = mol_count;	
 }
 

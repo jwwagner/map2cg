@@ -202,11 +202,9 @@ void read_topology_file(Controller *control, char* topfile)
     	fgets(line,100,fr);
     	read_number_in_line(control->prototype[i].num, line, temp_type);
     	
-    	printf("type %d: %d sites\n", i, control->prototype[i].num);
     	for(j = 0; j < control->prototype[i].num; j++)
     		{
     		control->prototype[i].num_list[j] = temp_type[j];
-    		printf("\t%d\n", control->prototype[i].num_list[j]);
     		}
     	}
     free(temp_mol);
@@ -441,7 +439,7 @@ void read_topology_file(Controller *control, char* topfile)
     	printf("guess file: %s\n\n", control->files.guess);
     	
     	//set scaleF flag
-    	double temp = 300.0 * 0.00198720414 * 4.184; //kcal/(mol K) --> now kj/(mol K)
+    	double temp = 1.0; //kcal/(mol K) --> now kj/(mol K)
     	if( (control->debug_flag == 3) || (control->debug_flag == 5) ) 
     		{
     		control->scaleF = temp;
