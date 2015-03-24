@@ -28,13 +28,14 @@
 // int  #output flag (0 = all, 1 = minimal, 2 = 1 value is #4 observable, 3 = 2nd sets of 3 values)
 // int  #sensitivity flag (0 = only map 1 file, 1 = map 2 files along with log data and guess, 2 = convert "minimal" output to filler "all" output, 3 = convert MSCGFM (1_1.dat) to (tab_ff.dat), 4 = sort CG frame by type, 5 = bootstrapping rearrangement, 6 = II CG charge force derivative, 7 = IJ CG charge force derivative)
 //	 	#this line intentionally left blank
-// int  #mapping style flag (0 = 1:1 molecule entirely, 1 = implicit solvent, 2 = truncate trajectory)
+// int  #mapping style flag (0 = 1:1 molecule entirely, 1 = implicit solvent, 2 = truncate trajectory, 3 = split molecule mapping)
 //IF mapping style flag == 1
 // int	#number of types to map
 // int #type ID's to be mapped
 // ...
 //IF mapping style flag == 2
 // int #number of atoms before truncate
+//IF mapping style flag == 3 (split molecule mapping)
 //ENDIF
 //		#this line intentionally left blank
 //IF sensitivity flag == 1 (Composite FM derivative processing)

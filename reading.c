@@ -300,6 +300,10 @@ void read_topology_file(Controller *control, char* topfile)
     		printf("Truncation number %d is greater than number of FG sites %d\n", control->num_fg_sites, control->num_truncate);
     		}
     	}
+    else if (control->map_style_flag == 3)
+    	{
+    	printf("will perform mapping of multiple CG sites per molecule.\n");
+    	}
     
     //set function pointer for reading function
     control->header_function = &default_func;

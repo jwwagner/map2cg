@@ -10,10 +10,12 @@ void process_no_map_frames_and_log(Controller*, Frame*, Frame*, Frame*);
 void map_all_atoms(Controller*, Frame*, Frame*); 
 void map_some_atoms(Controller*, Frame*, Frame*);
 void map_beginning_atoms(Controller*, Frame*, Frame*);
+void map_all_atoms_and_sort_mol_id(Controller*, Frame*, Frame*);
 //sensitivity functions
 void combine_sensitivity_data(Controller*, Frame*, Frame*, Frame*);
 void combine_cg_sensitivity_data(Controller*, Frame*, Frame*, Frame*);
 void process_frame_order(Controller*, Frame*, Frame*);
+void sort_mol_id(Controller*, Frame*, Frame*);
 void process_ij_charge_frames(Controller*, Frame*, Frame*);
 void process_ii_charge_frames(Controller*, Frame*, Frame*);
 void process_file_merge(Controller*, Frame*, double*);
@@ -113,6 +115,10 @@ void process_frame(Controller* control, Frame* inframe, Frame* outframe)
 		{
 		map_beginning_atoms(control, inframe, outframe);
 		}
+	else if(control->map_style_flag == 3)
+		{
+		map_all_atoms_and_sort_mol_id(control, inframe, outframe);
+		}
 }
 
 //////////////////////////////////
@@ -162,7 +168,7 @@ void process_minimal_frame(Controller* control, Frame* inframe, Frame* outframe)
 		}
 	for(j = 0; j < outframe->num_atoms; j++)
 		{
-		outframe->sites[j].num_in_site = 1;
+		outframe->sites[j].num_in_site = 0;
 		outframe->sites[j].id = j;
 		outframe->sites[j].mol = j;
 		outframe->sites[j].type = 1;
@@ -290,7 +296,7 @@ void map_all_atoms(Controller* control, Frame* inframe, Frame* outframe)
 	int mol_count = 0;
 	int mol_val = 0;
 	int real_mol_val = 0;
-	int site_count;
+	int site_count=0;
 	int num_key = inframe->num_mol * control->num_cg_types;
 	int key[num_key];
 	int assigned;
@@ -317,7 +323,7 @@ void map_all_atoms(Controller* control, Frame* inframe, Frame* outframe)
 				key[mol_val] = mol_count;
 				outframe->sites[key[mol_val]].id = key[mol_val] + 1;
 				outframe->sites[key[mol_val]].mol = real_mol_val + 1;
-				outframe->sites[key[mol_val]].num_in_site = 1;
+				outframe->sites[key[mol_val]].num_in_site = 0;
 				mol_count++;
 				real_mol_val++;
 			} else if( compatible_type_test(control, inframe, outframe, inframe->atoms[i].type, key[mol_val]) == -1 ) {
@@ -354,7 +360,7 @@ void map_all_atoms(Controller* control, Frame* inframe, Frame* outframe)
 					key[mol_val] = mol_count;
 					outframe->sites[key[mol_val]].id = key[mol_val] + 1;
 					outframe->sites[key[mol_val]].mol = outframe->sites[key[(inframe->atoms[i].mol - 1) * control->num_cg_types] ].mol;
-					outframe->sites[key[mol_val]].num_in_site = 1;
+					outframe->sites[key[mol_val]].num_in_site = 0;
 					mol_count++;
 				}
 			} else {
@@ -510,6 +516,78 @@ void map_beginning_atoms(Controller* control, Frame* inframe, Frame* outframe)
 		geometry_mapping(control, inframe, outframe);
 		}
 	outframe->num_mol = mol_count;	
+}
+
+/////////////////////////////////////////
+///   map_all_atoms_and_sort_mol_id	  ///
+////////////////////////////////////////
+
+void map_all_atoms_and_sort_mol_id(Controller* control, Frame* inframe, Frame* outframe)
+{
+//	//set-up midframe
+	int i, j;
+	Frame midframe;
+	midframe.num_atoms = 0;
+	midframe.type_count = 0;
+	
+	midframe.type = malloc(control->num_cg_types * sizeof(int));
+	midframe.type_num = malloc(control->num_cg_types * sizeof(int));
+	
+	//initialize type array
+	for(i = 0; i< control->num_cg_types; i++) {
+		midframe.type[i] = -1;
+		midframe.type_num[i] = 0;
+	}
+
+	//copy basic information from inframe to midframe
+	midframe.xmin = inframe->xmin;
+	midframe.xmax = inframe->xmax;
+	midframe.ymin = inframe->ymin;
+	midframe.ymax = inframe->ymax;
+	midframe.zmin = inframe->zmin;
+	midframe.zmax = inframe->zmax;
+	
+	midframe.timestep = inframe->timestep;
+	midframe.num_observables = inframe->num_observables;
+	
+	midframe.num_atoms = control->num_cg_sites;
+	midframe.sites = malloc(midframe.num_atoms * sizeof(SITE));
+		
+	//also need to allocate observables
+	for(i=0; i < midframe.num_atoms; i++) {
+		midframe.sites[i].observables = malloc(midframe.num_observables * sizeof(double));
+		midframe.sites[i].coord = malloc(control->max_to_map *sizeof(COORD));
+		midframe.sites[i].matches = malloc(control->num_cg_types * sizeof(int));
+	
+		midframe.sites[i].q = 0.0;
+		midframe.sites[i].num_in_site = 0;
+		midframe.sites[i].type = -1;
+		
+		for(j = 0; j < midframe.num_observables; j++) {
+			midframe.sites[i].observables[j] = 0.0;
+		}
+		
+		for(j = 0; j < control->max_to_map; j++) {
+			midframe.sites[i].coord[j].x = 0.0;
+			midframe.sites[i].coord[j].y = 0.0;
+			midframe.sites[i].coord[j].z = 0.0;
+		}
+			
+		for(j = 0; j < control->num_cg_types; j++) {
+			midframe.sites[i].matches[j] = 1;
+		}
+	}
+	
+//	//map inframe to midframe
+	map_all_atoms(control, inframe, &midframe);
+	
+//	//sort midframe to outframe
+	sort_mol_id(control, &midframe, outframe);
+	
+	//clean-up midframe
+	free(midframe.sites);
+	free(midframe.type);
+	free(midframe.type_num);
 }
 
 //////////////////////////////////////
@@ -877,6 +955,63 @@ void process_frame_order(Controller* control, Frame* inframe, Frame* outframe)
 			spot++;
 			}
 		}
+}
+
+////////////////////////////////
+///       sort_mol_id 	    ///
+//////////////////////////////
+
+void sort_mol_id(Controller* control, Frame* inframe, Frame* outframe) 
+{
+	int i, j, k;
+	int id, spot, prev, type, mol_spot;
+	int new_id = 1;
+	
+	int real_mols = inframe->num_atoms / control->num_cg_types;
+	inframe->type_list = malloc(real_mols * sizeof(int*));
+	for(i = 0; i < real_mols; i++) {
+		inframe->type_list[i] = malloc(control->num_cg_types * sizeof(int));
+		for(j = 0; j < control->num_cg_types; j++) {
+			inframe->type_list[i][j] = -1;
+		}
+	}	
+	
+	//collect molecule info in type_list
+	for(i = 0; i < inframe->num_atoms; i++) {		
+		mol_spot = inframe->sites[i].mol -1;
+		type = inframe->sites[i].type - 1;
+		inframe->type_list[mol_spot][type] = i;
+	}
+	
+	//transfer inframe site information to outframe while sorting by type
+	for(i = 0; i < real_mols; i++) {	
+	
+		prev = i * control->num_cg_types;	
+		for(j = 0; j < control->num_cg_types; j++) {
+			id = inframe->type_list[i][j];
+			outframe->sites[ prev + j ].id	=  new_id;//inframe->sites[ id ].id;
+			outframe->sites[ prev + j ].mol = inframe->sites[ id ].mol;
+			outframe->sites[ prev + j ].type = inframe->sites[ id ].type;
+			outframe->sites[ prev + j ].mass = inframe->sites[ id ].mass;
+			outframe->sites[ prev + j ].q	= inframe->sites[ id ].q;
+			outframe->sites[ prev + j ].x	= inframe->sites[ id ].x;
+			outframe->sites[ prev + j ].y	= inframe->sites[ id ].y;
+			outframe->sites[ prev + j ].z	= inframe->sites[ id ].z;
+			new_id++;
+			for(k = 0; k < outframe->num_observables; k++) {
+				outframe->sites[ prev + j ].observables[k] = inframe->sites[ id ].observables[k];
+			} 
+		}
+	}
+	
+	//copy other misc. information to outframe
+	outframe->num_mol = inframe->num_mol;
+
+	//free locally allocated information
+	for(i = 0; i < real_mols; i++) {
+		free(inframe->type_list[i]);
+	}
+	free(inframe->type_list);
 }
 
 /////////////////////////////////////
@@ -1374,18 +1509,15 @@ void determine_type(Controller* control, Frame* inframe, Frame* outframe, int* c
 
 int compatible_type_test(Controller* control, Frame* inframe, Frame* outframe, int current_type, int map)
 {
-	//printf("compatible_type_test for type %d\n", current_type);
 	int j, k, l, m;
 	int check = 0;
 	
 	//see how many matches remain
 	for(j = 0; j < control->num_cg_types; j++) { //loop through all prototypes			
 		//printf("type %d with matches of map %d for %d\n", j, map, outframe->sites[map].matches[j]);
-		//printf("type %d with matches %d of map %d\n", j, outframe->sites[map].matches[j], map);
-		//if(outframe->sites[map].matches[j] == 1) { //only consider if they are still in the running
+		if(outframe->sites[map].matches[j] == 1) { //only consider if they are still in the running
 			
 			//see if the combined molecule is of reasonable size
-			//printf("num_in_site is %d\n", outframe->sites[map].num_in_site);
 			//printf("prototype %d has num %d\n", j, control->prototype[j].num);
 			
 			if( outframe->sites[map].num_in_site > control->prototype[j].num ) {
@@ -1395,9 +1527,9 @@ int compatible_type_test(Controller* control, Frame* inframe, Frame* outframe, i
 			}
 			
 			//see if this type is part of the potential prototype
-			int evaluate[ control->prototype[j].num ];		
+			//int evaluate[ control->prototype[j].num ];		
 			check = 0;
-			for(k = 0; k < control->prototype[j].num; k++) evaluate[k] = -1;
+			//for(k = 0; k < control->prototype[j].num; k++) evaluate[k] = -1;
 			
 			//specifically test new type
 			//printf("check evaluate with j %d  and num %d\n", j, control->prototype[j].num);
@@ -1406,9 +1538,9 @@ int compatible_type_test(Controller* control, Frame* inframe, Frame* outframe, i
 				//printf(" k %d with current_type %d and num_list type %d\n", k, current_type, control->prototype[j].num_list[k]);
 				if( current_type == control->prototype[j].num_list[k] )
 				{
-					evaluate[k] = outframe->sites[map].num_in_site + 1;
+					//evaluate[k] = outframe->sites[map].num_in_site + 1;
 					check = 1;
-					//printf("temp pass to check 1\n");
+					//printf("temp pass to check 1\n\n");
 					return 1;
 					break;
 				}
@@ -1452,10 +1584,11 @@ int compatible_type_test(Controller* control, Frame* inframe, Frame* outframe, i
 			printf("pass\n");
 			return 1;
 			}
-*/		//}
+*/		
+		}
 	}
 	//otherwise, we have failed to find a match
-	//printf("fail\n");
+	//printf("fail\n\n");
 	return -1;
 }	
 
