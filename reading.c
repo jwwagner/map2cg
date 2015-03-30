@@ -460,6 +460,9 @@ void read_topology_file(Controller *control, char* topfile)
     	fgets(line,100,fr);//debug flag
     	sscanf(line, "%d", &control->debug_flag);
     	
+    	fgets(line,100,fr);//sign flag
+    	sscanf(line, "%d", &control->sign_flag);
+    	
     	fgets(line,100,fr);//debug flag
     	sscanf(line, "%lf", &input_temp);
     	
@@ -471,12 +474,13 @@ void read_topology_file(Controller *control, char* topfile)
     	printf("dump file #2: %s\n", control->files.dump2);
     	printf("log files: %s\n", control->files.log);
     	printf("guess file: %s\n\n", control->files.guess);
-    	printf("sens_map_flag: %d\n", control->sens_map_flag);
-    	printf("debug_flag: %d\n", control->debug_flag);
-    	printf("input_temp: %lf K\n", input_temp);
+    	printf("sens_map_flag = %d\n", control->sens_map_flag);
+	   	printf("control->debug_flag = %d\n", control->debug_flag);
+    	printf("\n");
+    	printf("input_temp = %lf K\n", input_temp);
     	
     	//set scaleF flag
-    	double temp = $input_temp * 0.00198720414; //kcal/(mol K)
+    	double temp = input_temp * 0.00198720414; //kcal/(mol K)
     	if(kbt_units == 0) {
     		printf("kbt units are kcal/mol :: flag %d\n\n", kbt_units);
     	} else if (kbt_units == 1) {
@@ -484,7 +488,7 @@ void read_topology_file(Controller *control, char* topfile)
     		temp *= 4.184; //kj/mol (mol K)
     	} else if (kbt_units == -1) {
     		printf("kbt units are LJ units (kbt = temp) :: flag %d\n\n", kbt_units);
-    		temp = $input_temp;
+    		temp = input_temp;
     	} else {
     		printf("kbt units flag %d is not supported! \n\n", kbt_units);
     	}
@@ -527,14 +531,11 @@ void read_topology_file(Controller *control, char* topfile)
     		control->scaleU2 *= ((double) control->num_cg_sites) * 3.0;
     		}
     	    	
-    	printf("control->debug_flag = %d\n", control->debug_flag);
     	printf("control->num_fg_sites = %d\n", control->num_fg_sites);
     	printf("control->num_cg_sites = %d\n", control->num_cg_sites);
     	printf("SCALE F = %lf\n", control->scaleF);
     	printf("SCALE U1 = %lf \n", control->scaleU1);
     	printf("SCALE U2 = %lf \n", control->scaleU2);
-    	fgets(line,100,fr);//sign flag
-    	sscanf(line, "%d", &control->sign_flag);
     	
     	if( abs(control->sign_flag) != 1 ) printf("ERROR: INVALID SIGN FLAG = %d\n", control->sign_flag);
     	else printf("control->sign_flag = %d\n", control->sign_flag);
