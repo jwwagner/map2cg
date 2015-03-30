@@ -313,92 +313,111 @@ void read_topology_file(Controller *control, char* topfile)
     		control->read_function = &read0full;
     		control->output_function = &out0full;
     		control->header_function = &header0full;
+			printf("read0full -- id mol type q mass x y z\n");
 			break;
 		case 1:
     		control->read_function = &read1full;
     		control->output_function = &out1full;
     		control->header_function = &header1full;
+			printf("read1full -- id mol type q mass fx\n");
 			break;
 		case 2:
     		control->read_function = &read2full;
     		control->output_function = &out2full;
+			printf("read2full -- id mol type q mass x y z fx fy\n");
     		break;
 		case 3:
     		control->read_function = &read3full;
     		control->output_function = &out3full;
     		control->header_function = &header3full;
+			printf("read3full -- id mol type q mass x y z fx fy fz\n");
 			break;
 		case 4:
 			control->read_function = &read4full;
     		control->output_function = &out4full;
     		control->header_function = &header4full;
+			printf("read4full -- id mol type q mass x y z fx fy fz U\n");
 			break;
 		case 5:
 			control->read_function = &read5full;
     		control->output_function = &out5full;
+			printf("read5full -- id mol type q mass x y z fx fy fx U S\n");
 			break;
 		case 6:
     		control->read_function = &read6full;
     		control->output_function = &out6full;
+    		printf("read6full -- id mol type q mass x y z fx fy fx px py pz\n");
 			break;
 		case 7:
     		control->read_function = &read7full;
     		control->output_function = &out7full;
     		control->header_function = &header7full;
+    		printf("read7full -- id mol type q mass x y z fx fy fx fz px py pz U\n");
 			break;
 		case 8:
     		control->read_function = &read8full;
     		control->output_function = &out8full;
+    		printf("read8full -- id mol type q mass x y z fx fy fx fz px py pz U S\n");
 			break;
 		case 9:
     		control->read_function = &read9full;
     		control->output_function = &out9full;
+    		printf("read9full -- id mol type q mass x y z fx fy fx fz px pz pz U S H\n");
 			break;
 		case -1:
     		control->read_function = &read1minid;
     		control->output_function = &out1minid;
     		control->header_function = &header1id;
+			printf("read0minid -- id x y z fx\n");
 			break;
 		case -2:
 			control->read_function = &read2minid;
     		control->output_function = &out2minid;
     		control->header_function = &header2id;
-    		break;
+    		printf("read1minid -- id x y z fx fy\n");
+			break;
 		case -3:
 			printf("setting output function pointers to minid values for -3\n");
 			control->read_function = &read3minid;
     		control->output_function = &out3minid;
     		control->header_function = &header3id;
+    		printf("read3minid -- id x y z fx fy fz\n");
     		break;
 		case -4:
 			control->read_function = &read4minid;
     		control->output_function = &out4minid;
     		control->header_function = &header4id;
+    		printf("read4minid -- id x y z fx fy fz U\n");
     		break;
 		case -5:
 			control->read_function = &read5minid;
     		control->output_function = &out5minid;
     		control->header_function = &header5id;
+    		printf("read5minid -- id x y z fx fy fz U S\n");
     		break;
 		case -6:
 			control->read_function = &read6minid;
     		control->output_function = &out6minid;
     		control->header_function = &header6id;
+    		printf("read6minid -- id x y z fx fy fz px py pz\n");
     		break; 
 		case -7:
 			control->read_function = &read7minid;
     		control->output_function = &out7minid;
     		control->header_function = &header7id;
+    		printf("read7minid -- id x y z fx fy fz px py pz U\n");
     		break;
 		case -8:
 			control->read_function = &read8minid;
     		control->output_function = &out8min;
     		control->header_function = &header8id;
+    		printf("read8minid -- id x y z fx fy fz px py pz U S\n");
     		break;
 		case -9:
 			control->read_function = &read9minid;
     		control->output_function = &out9minid;
     		control->header_function = &header9id;
+    		printf("read9minid -- id x y z fx fy fz px py pz U S H\n");
     		break;
     		
 		default:
@@ -513,33 +532,43 @@ void read_topology_file(Controller *control, char* topfile)
   			{
 			case 0:
     			control->read_function = &read0min;
+				printf("read0min -- x y z\n");
 				break;
 			case 1:
     			control->read_function = &read1min;
+    			printf("read1min -- x y z fx\n");
 				break;
 			case 2:
     			control->read_function = &read2min;
+    			printf("read2min -- x y z fx fy\n");
     			break;
 			case 3:
     			control->read_function = &read3min;
+    			printf("read3min -- x y z fx fy fz\n");
 				break;
 			case 4:
 				control->read_function = &read4min;
+    			printf("read4min -- x y z fx fy fz U\n");
 				break;
 			case 5:
 				control->read_function = &read5min;
+    			printf("read5min -- x y z fx fy fz U S\n");
 				break;
 			case 6:
     			control->read_function = &read6min;
+    			printf("read6min -- x y z fx fy fz px py pz\n");
 				break;
 			case 7:
     			control->read_function = &read7min;
+    			printf("read7min -- x y z fx fy fz px py pz U\n");
 				break;
 			case 8:
     			control->read_function = &read8min;
+    			printf("read8min -- x y z fx fy fz px py pz U S\n");
 				break;
 			case 9:
     			control->read_function = &read9min;
+    			printf("read9min -- x y z fx fy fz px py pz U S H\n");
 				break;
 			default:
 				printf("number of observables requested %d is not supported \n", control->num_observables);
