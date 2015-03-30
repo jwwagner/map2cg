@@ -164,6 +164,9 @@ void read_topology_file(Controller *control, char* topfile)
 	control->num_files = 0;
 	control->num_observables = 0;
 	control->num_truncate = -1;
+	
+	int kbt_units = 1;
+	double input_temp = 1.0;
     
     //read_input
     fgets(line,100,fr);//1
@@ -457,14 +460,35 @@ void read_topology_file(Controller *control, char* topfile)
     	fgets(line,100,fr);//debug flag
     	sscanf(line, "%d", &control->debug_flag);
     	
+    	fgets(line,100,fr);//debug flag
+    	sscanf(line, "%lf", &input_temp);
+    	
+    	fgets(line,100,fr);//debug flag
+    	sscanf(line, "%d", &kbt_units);
+    	
     	printf("\nSensitivity Files are:\n");
     	printf("dump file #1: %s\n", control->files.dump1);
     	printf("dump file #2: %s\n", control->files.dump2);
     	printf("log files: %s\n", control->files.log);
     	printf("guess file: %s\n\n", control->files.guess);
+    	printf("sens_map_flag: %d\n", control->sens_map_flag);
+    	printf("debug_flag: %d\n", control->debug_flag);
+    	printf("input_temp: %lf K\n", input_temp);
     	
     	//set scaleF flag
-    	double temp = 300.0 * 0.00198720414 * 4.184; //kcal/(mol K) --> now kj/(mol K)
+    	double temp = $input_temp * 0.00198720414; //kcal/(mol K)
+    	if(kbt_units == 0) {
+    		printf("kbt units are kcal/mol :: flag %d\n\n", kbt_units);
+    	} else if (kbt_units == 1) {
+    		printf("kbt units are kj/mol :: flag %d\n\n", kbt_units);
+    		temp *= 4.184; //kj/mol (mol K)
+    	} else if (kbt_units == -1) {
+    		printf("kbt units are LJ units (kbt = temp) :: flag %d\n\n", kbt_units);
+    		temp = $input_temp;
+    	} else {
+    		printf("kbt units flag %d is not supported! \n\n", kbt_units);
+    	}
+    	
     	if( (control->debug_flag == 3) || (control->debug_flag == 5) ) 
     		{
     		control->scaleF = temp;
