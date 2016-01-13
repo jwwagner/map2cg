@@ -26,7 +26,7 @@ typedef struct
 
 typedef struct
 {
-	double x, y, z, mass;
+	double x, y, z, mass, q;
 	int type;
 } COORD;
 

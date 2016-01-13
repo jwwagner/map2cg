@@ -94,6 +94,7 @@ void process_frame(Controller* control, Frame* inframe, Frame* outframe)
 			outframe->sites[i].coord[j].x = 0.0;
 			outframe->sites[i].coord[j].y = 0.0;
 			outframe->sites[i].coord[j].z = 0.0;
+			outframe->sites[i].coord[j].q = 0.0;
 			}
 			
 		for(j = 0; j < control->num_cg_types; j++)
@@ -374,6 +375,7 @@ void map_all_atoms(Controller* control, Frame* inframe, Frame* outframe)
 			outframe->sites[key[mol_val]].coord[site_count].z = inframe->atoms[i].z;
 			outframe->sites[key[mol_val]].coord[site_count].mass = inframe->atoms[i].mass;
 			outframe->sites[key[mol_val]].coord[site_count].type = inframe->atoms[i].type;
+			outframe->sites[key[mol_val]].coord[site_count].q = inframe->atoms[i].q;
 			outframe->sites[key[mol_val]].q += inframe->atoms[i].q;
 			outframe->sites[ key[mol_val] ].num_in_site++;
 
@@ -445,6 +447,7 @@ void map_some_atoms(Controller* control, Frame* inframe, Frame* outframe)
 			outframe->sites[key[mol_val]].coord[site_count].z = inframe->atoms[i].z;
 			outframe->sites[key[mol_val]].coord[site_count].mass = inframe->atoms[i].mass;
 			outframe->sites[key[mol_val]].coord[site_count].type = inframe->atoms[i].type;
+			outframe->sites[key[mol_val]].coord[site_count].q = inframe->atoms[i].q;
 			outframe->sites[key[mol_val]].q += inframe->atoms[i].q;
 			
 			for(j = 0; j < outframe->num_observables; j++)
@@ -502,6 +505,7 @@ void map_beginning_atoms(Controller* control, Frame* inframe, Frame* outframe)
 			outframe->sites[key[mol_val]].coord[site_count].z = inframe->atoms[i].z;
 			outframe->sites[key[mol_val]].coord[site_count].mass = inframe->atoms[i].mass;
 			outframe->sites[key[mol_val]].coord[site_count].type = inframe->atoms[i].type;
+			outframe->sites[key[mol_val]].coord[site_count].q = inframe->atoms[i].q;
 			outframe->sites[key[mol_val]].q += inframe->atoms[i].q;
 			outframe->sites[ key[mol_val] ].num_in_site++;
 			
@@ -571,6 +575,7 @@ void map_all_atoms_and_sort_mol_id(Controller* control, Frame* inframe, Frame* o
 			midframe.sites[i].coord[j].x = 0.0;
 			midframe.sites[i].coord[j].y = 0.0;
 			midframe.sites[i].coord[j].z = 0.0;
+			midframe.sites[i].coord[j].q = 0.0;
 		}
 			
 		for(j = 0; j < control->num_cg_types; j++) {
@@ -849,6 +854,7 @@ void process_frame_order(Controller* control, Frame* inframe, Frame* outframe)
 			outframe->sites[i].coord[j].x = 0.0;
 			outframe->sites[i].coord[j].y = 0.0;
 			outframe->sites[i].coord[j].z = 0.0;
+			outframe->sites[i].coord[j].q = 0.0;
 			}
 			
 		for(j = 0; j < control->num_cg_types; j++)
@@ -1799,13 +1805,13 @@ void geometry_mapping(Controller* control, Frame* inframe, Frame* outframe)
 		} 
 	else if(control->geometry_map_flag == 2) //map to CoC
 		{
-		double tot_q = 0.0;
 		for(i = 0; i < outframe->num_atoms; i++)
 			{
 			outx = 0.0;
 			outy = 0.0;
 			outz = 0.0;
 			tot_mass = 0.0;
+			double tot_q = 0.0;
 				
 			for(j = 0; j < outframe->sites[i].num_in_site; j++)
 				{
@@ -1853,15 +1859,15 @@ void geometry_mapping(Controller* control, Frame* inframe, Frame* outframe)
 					}
 						
 				//add value to weighted sum
-				outx += outframe->sites[i].coord[j].x * outframe->sites[i].q;
-				outy += outframe->sites[i].coord[j].y * outframe->sites[i].q;
-				outz += outframe->sites[i].coord[j].z * outframe->sites[i].q;
+				outx += outframe->sites[i].coord[j].x * outframe->sites[i].coord[j].q;
+				outy += outframe->sites[i].coord[j].y * outframe->sites[i].coord[j].q;
+				outz += outframe->sites[i].coord[j].z * outframe->sites[i].coord[j].q;
 				tot_mass += outframe->sites[i].coord[j].mass;
-				tot_q += outframe->sites[i].q;
+				tot_q += outframe->sites[i].coord[j].q;
 				}
 				
 			//calculate average positions
-			printf("tot_q: %lf\n", tot_q);
+			//printf("tot_q: %lf\n", tot_q);
 			outframe->sites[i].x = outx / tot_q;
 			outframe->sites[i].y = outy / tot_q;
 			outframe->sites[i].z = outz / tot_q;
