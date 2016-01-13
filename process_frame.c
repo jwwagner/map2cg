@@ -1796,6 +1796,105 @@ void geometry_mapping(Controller* control, Frame* inframe, Frame* outframe)
 			//set total mass
 			outframe->sites[i].mass = tot_mass;
 			}
+		} 
+	else if(control->geometry_map_flag == 2) //map to CoC
+		{
+		double tot_q = 0.0;
+		for(i = 0; i < outframe->num_atoms; i++)
+			{
+			outx = 0.0;
+			outy = 0.0;
+			outz = 0.0;
+			tot_mass = 0.0;
+				
+			for(j = 0; j < outframe->sites[i].num_in_site; j++)
+				{
+				//check to see if coordinates are wrapped (and reset out* values)
+				dist = outframe->sites[i].coord[j].x - outframe->sites[i].coord[0].x;
+				box = outframe->xmax - outframe->xmin;
+				if( abs(dist) >= (box/2.0) )
+					{
+					if(dist > 0) 
+						{
+						outframe->sites[i].coord[j].x -= box;
+						}
+					else
+						{
+						outframe->sites[i].coord[j].x += box;
+						}
+					}					
+					
+				dist = outframe->sites[i].coord[j].y - outframe->sites[i].coord[0].y;
+				box = outframe->ymax - outframe->ymin;
+				if( abs(dist) >= (box/2.0) )
+					{
+					if(dist > 0) 
+						{
+						outframe->sites[i].coord[j].y -= box;
+						}
+					else
+						{
+						outframe->sites[i].coord[j].y += box;
+						}
+					}	
+					
+				dist = outframe->sites[i].coord[j].z - outframe->sites[i].coord[0].z;
+				box = outframe->zmax - outframe->zmin;
+				if( abs(dist) >= (box/2.0) )
+					{
+					if(dist > 0) 
+						{
+						outframe->sites[i].coord[j].z -= box;
+						}
+					else
+						{
+						outframe->sites[i].coord[j].z += box;
+						}
+					}
+						
+				//add value to weighted sum
+				outx += outframe->sites[i].coord[j].x * outframe->sites[i].q;
+				outy += outframe->sites[i].coord[j].y * outframe->sites[i].q;
+				outz += outframe->sites[i].coord[j].z * outframe->sites[i].q;
+				tot_mass += outframe->sites[i].coord[j].mass;
+				tot_q += outframe->sites[i].q;
+				}
+				
+			//calculate average positions
+			printf("tot_q: %lf\n", tot_q);
+			outframe->sites[i].x = outx / tot_q;
+			outframe->sites[i].y = outy / tot_q;
+			outframe->sites[i].z = outz / tot_q;
+
+			//check if final coordinate is in box (wrap)
+			if( outframe->sites[i].x > outframe->xmax ) 
+				{
+				outframe->sites[i].x -= outframe->xmax - outframe->xmin;
+				}
+			if( outframe->sites[i].x < outframe->xmin ) 
+				{
+				outframe->sites[i].x += outframe->xmax - outframe->xmin;
+				}
+			if( outframe->sites[i].y > outframe->ymax ) 
+				{
+				outframe->sites[i].y -= outframe->ymax - outframe->ymin;
+				}
+			if( outframe->sites[i].y < outframe->ymin ) 
+				{
+				outframe->sites[i].y += outframe->ymax - outframe->ymin;
+				}
+			if( outframe->sites[i].z > outframe->zmax ) 
+				{
+				outframe->sites[i].z -= outframe->zmax - outframe->zmin;
+				}
+			if( outframe->sites[i].z < outframe->zmin ) 
+				{
+				outframe->sites[i].z += outframe->zmax - outframe->zmin;
+				}
+					
+			//set total mass
+			outframe->sites[i].mass = tot_mass;
+			}							
 		}
 }
 

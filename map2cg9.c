@@ -22,7 +22,7 @@
 // int *** #list types for each atom in cg molecule (# should match above line's value)
 // ...     #continue until #CG types is fulfilled
 //		#this line intentionally left blank
-// int	#geometry mapping flag (0 = CoM geometry mapping, 1 = center of geometry mapping)
+// int	#geometry mapping flag (0 = CoM geometry mapping, 1 = center of geometry mapping, 2 = center of charge mapping)
 // int  #observable mapping flag (0 = additive mappign)
 // int	#number observables to map
 // int  #output flag (0 = all, 1 = minimal, 2 = 1 value is #4 observable, 3 = 2nd sets of 3 values)
